@@ -687,6 +687,7 @@ def cullPoolsWithInsufficientLiquidity(pools,threshold=0.001):
   remPools = [p for i,p in enumerate(pools) if normLiq[i]>threshold]
   return remPools
 
+
 def getCulledPoolChains(poolChains,threshold=0.001):
   newChains = []
   for path in poolChains:
@@ -696,6 +697,7 @@ def getCulledPoolChains(poolChains,threshold=0.001):
       newPath.append(culledPath)
     newChains.append(newPath)
   return newChains
+
 
 def getPoolChainFromPaths(paths,pools,cull=True,threshold=0.00):
   '''if cull is true, this will prune out parallel pools at a given hop stage that
@@ -715,6 +717,7 @@ def getPoolChainFromPaths(paths,pools,cull=True,threshold=0.00):
     poolChains = getCulledPoolChains(poolChains,threshold)
   return poolChains
 
+
 def getRoutesFromPoolChain(poolChains):
     routes = []
     for poolChain in poolChains:
@@ -723,6 +726,7 @@ def getRoutesFromPoolChain(poolChains):
         routes.extend(newRoutes)
     return routes
 
+
 def getOutputSingleHop(pool, inputToken, outputToken, totalInput):
     totalInput = Decimal(totalInput)
     if 'gamma' not in pool:
@@ -730,6 +734,7 @@ def getOutputSingleHop(pool, inputToken, outputToken, totalInput):
     num = totalInput * pool['gamma'] * Decimal(pool['reserves'][outputToken])
     denom = Decimal(pool['reserves'][inputToken]) + totalInput * pool['gamma']
     return num/denom
+
 
 def getOutputDoubleHop(pools, inputToken, middleToken, outputToken, totalInput):
     totalInput = Decimal(totalInput)
@@ -752,6 +757,7 @@ def getOutputDoubleHop(pools, inputToken, middleToken, outputToken, totalInput):
     #denom = denom + totalInput * (p1['gamma'] * c2 + p1['gamma']*p2['gamma']*c1)
     return num / denom
 
+
 def getOutputFromRoute(route, nodeRoute, allocation):
     if Decimal(allocation) == Decimal(0):
         return Decimal(0)
@@ -768,6 +774,7 @@ def getOutputFromRoute(route, nodeRoute, allocation):
         output = getOutputDoubleHop(pools, inputToken, middleToken, outputToken, allocation)
     return output
 
+
 def testRandomInputs(routes, nodeRoutes, totalInput,N = 100):
     vvals = []
     outputVals = []
@@ -778,10 +785,12 @@ def testRandomInputs(routes, nodeRoutes, totalInput,N = 100):
         outputVals.append(np.sum([getOutputFromRoute(r,nr,a) for r,nr,a in zip(routes,nodeRoutes,v)]))
     return vvals, outputVals
 
+
 def getOptOutputVec(routes,nodeRoutes,totalInput):
     allocations = getOptimalAllocationForRoutes(routes,nodeRoutes,totalInput)
     result = [getOutputFromRoute(r,nr,a) for r,nr,a in zip(routes,nodeRoutes,allocations)]
     return result, allocations
+
 
 def getOptOutput(routes, nodeRoutes, totalInput, refined=False):
     if refined:
@@ -790,10 +799,12 @@ def getOptOutput(routes, nodeRoutes, totalInput, refined=False):
         func = getOptOutputVec
     return np.sum(func(routes,nodeRoutes,totalInput))
 
+
 def getBestOptOutput(routes, nodeRoutes, totalInput):
     res1 = np.sum(getOptOutputVecRefined(routes,nodeRoutes,totalInput)[0])
     res2 = np.sum(getOptOutputVec(routes,nodeRoutes,totalInput)[0])
     return max(res1,res2)
+
 
 def getBestOptInput(routes, nodeRoutes, totalInput):
     outputsRef,inputsRef =  getOptOutputVecRefined(routes,nodeRoutes,totalInput)
@@ -802,6 +813,7 @@ def getBestOptInput(routes, nodeRoutes, totalInput):
         return inputsRef
     else:
         return inputs
+
 
 def getOptOutputVecRefined(routes,nodeRoutes,totalInput):
     initLengthRoutes = len(routes)
@@ -827,22 +839,7 @@ def getOptOutputVecRefined(routes,nodeRoutes,totalInput):
         
     return result, allocations
 
-def testAddingRoutes(pools=None,inputToken='wrap.near',outputToken='dbio.near'):
-    if pools is None:
-        pools = getAllNonzeroPools()
-    paths = getPathsFromPools(pools,inputToken,outputToken)
-    poolChains = getPoolChainFromPaths(paths, pools)
-    routes = getRoutesFromPoolChain(poolChains)
-    nodeRoutes = getNodeRoutesFromPathsAndPoolChains(paths, poolChains)
-    
-    tis = np.logspace(10,50,300)
-    res = {}
-    plt.figure(figsize=(10,7));
-    for i in range(1,len(routes)):
-        res[i] = [getBestOptOutput(routes[:i],nodeRoutes[:i],ti) for ti in tis]
-        plt.loglog(tis, res[i],'o',label=f'{i} rt.')
-        plt.legend(loc='best')
-    plt.show()
+
 
 def getBestOptimalAllocationsAndOutputs(pools=None,inputToken='wrap.near',outputToken='dbio.near',totalInput=0):
     if pools is None:
@@ -857,6 +854,7 @@ def getBestOptimalAllocationsAndOutputs(pools=None,inputToken='wrap.near',output
     
     return allocations, outputs,routes, nodeRoutes
 
+
 def getMiddleTokenTotals(routes,nodeRoutes,allocations):
   mtt = {}
   for route,nodeRoute,allocation in zip(routes,nodeRoutes,allocations):
@@ -868,6 +866,7 @@ def getMiddleTokenTotals(routes,nodeRoutes,allocations):
         #print('middle token received multiple allocations')
         mtt[middleToken] += getOutputSingleHop(route[0],nodeRoute[0],middleToken,allocation)
   return mtt
+
 
 def getSecondHopAllocations(routes,nodeRoutes,allocations):
   '''To be used in determining input amounts for second hop in transactions.
@@ -890,6 +889,7 @@ def getSecondHopAllocations(routes,nodeRoutes,allocations):
       secondHopAllocations[i] = Decimal(0)
       continue
     # make a dict of dict of middle token name to route id(s) to initial allocation per route id
+
 
 def getTransactionListFromRoutesAndAllocations(routes, nodeRoutes, allocations,hopMultiplier = 0.99):
     transactions = []
@@ -943,6 +943,7 @@ def getTransactionListFromRoutesAndAllocations(routes, nodeRoutes, allocations,h
             transactions.append(transaction2)
     return transactions
 
+
 def getTokensFromPools(pools):
   tokens = []
   for pool in pools:
@@ -950,6 +951,7 @@ def getTokensFromPools(pools):
       if token not in tokens:
         tokens.append(token)
   return tokens
+
 
 def getSmartRouteSwapTransactionsORIG(pools=None, inputToken = 'wrap.near', outputToken = 'dbio.near', totalInput=0):
   '''contains original code for generating transaction objects. treats all 
@@ -973,6 +975,30 @@ def getSmartRouteSwapTransactionsORIG(pools=None, inputToken = 'wrap.near', outp
 # MAIN FUNCTION:
 
 def getSmartRouteSwapTransactions(pools=None, inputToken = 'wrap.near', outputToken = 'dbio.near', totalInput=0):
+    """
+    Main smart route swap function for generating the transactions necessary
+    to transfer totalInput amount of inputToken in order to yield maximum amount
+    of outputToken. 
+    
+
+    Parameters
+    ----------
+    pools : list<pool object>, optional
+        list of simple CPMM pool objects collected from Ref Finance getPools() function. 
+        The default is None, which causes the function to call getAllNonzeroPools().
+    inputToken : str
+        name of token contract for input token. The default is 'wrap.near'.
+    outputToken : str
+        name of token contract for output token. The default is 'dbio.near'.
+    totalInput : int, float, or Decimal (will be converted to Decimal)
+        total amount of inputToken to trade. Specified in units of  The default is 0.
+
+    Returns
+    -------
+    list<dict>
+        list of transaction dictionary objects.
+
+    """
     if not totalInput:
         return []
     if pools is None:
@@ -1010,6 +1036,26 @@ def getSmartRouteSwapTransactions(pools=None, inputToken = 'wrap.near', outputTo
     return transactions
 
 """## Testing Code"""
+
+
+def testAddingRoutes(pools=None,inputToken='wrap.near',outputToken='dbio.near'):
+    if pools is None:
+        pools = getAllNonzeroPools()
+    paths = getPathsFromPools(pools,inputToken,outputToken)
+    poolChains = getPoolChainFromPaths(paths, pools)
+    routes = getRoutesFromPoolChain(poolChains)
+    nodeRoutes = getNodeRoutesFromPathsAndPoolChains(paths, poolChains)
+    
+    tis = np.logspace(10,50,300)
+    res = {}
+    plt.figure(figsize=(10,7));
+    plt.xlabel(f'Amount Input Token {inputToken}')
+    plt.xlabel(f'Amount Output Token {outputToken}')
+    for i in range(1,len(routes)):
+        res[i] = [getBestOptOutput(routes[:i],nodeRoutes[:i],ti) for ti in tis]
+        plt.loglog(tis, res[i],'o',label=f'{i} rt.')
+        plt.legend(loc='best')
+    plt.show()
 
 # conn = MultiNodeJsonProvider("MAINNET")
 
