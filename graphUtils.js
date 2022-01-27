@@ -170,8 +170,8 @@ class PathBuffer {
     pop() {
         //let val = heappop(this.sortedpaths);
         let val = this.sortedpaths.shift();
-        console.log('val is ...')
-        console.log(val)
+        // console.log('val is ...')
+        // console.log(val)
         let cost = val[0];
         let path = val[1];
         this.paths.splice((this.paths.indexOf(path)),1);
@@ -230,7 +230,7 @@ function* yenFromPy(g,source,target) {
                 listB.push(root_length + length, path);
 
           } catch {
-                console.log('.')
+                //console.log('.')
           }
           //console.log('root is now...')
           //console.log(root)
