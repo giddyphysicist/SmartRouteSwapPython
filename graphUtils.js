@@ -259,6 +259,61 @@ function getKShortestPaths(g, source, target, k) {
     return paths;
 }
 
+
+//TODO: 
+// port python lagrange algorithm
+// import pools from Ref UI. 
+// create interface functions
+//  -- create graph object from list of pools.
+
+// TO ADD TO src/store/RefDatabase.ts as a method following the queryPoolsByTokens() method on line 268
+/*
+async queryPoolsToken1OrToken2(tokenInId: string, tokenOutId: string) {
+  let normalItems1 = await this.poolsTokens
+    .where('token1Id')
+    .equals(tokenInId.toString())
+    .toArray();
+  let normalItems2 = await this.poolsTokens
+    .where('token1Id')
+    .equals(tokenOutId.toString())
+    .toArray();
+  let reverseItems1 = await this.poolsTokens
+    .where((item) => item.token2Id === tokenInId.toString())
+    .toArray();
+  let reverseItems2 = await this.poolsTokens
+    .where((item) => item.token2Id === tokenOutId.toString())
+    .toArray();
+
+   //note, there might be some overlap... we'll need to remove the duplicates.
+  let dup = [...normalItems1, ...normalItems2, ...reverseItems1, ...reverseItems2];
+  let result = [];
+  let resultJson = [];
+  for (n in dup) {
+    let item = dup[n];
+    let itemJson = JSON.stringify(item); // using stringify with JSON to test object inclusion.
+    if (!resultJson.includes(itemJson)) {
+      result.push(item);
+      resultJson.push(itemJson);
+    }
+  }
+  return result;
+}
+
+
+In src/services/pool.ts, need to add function to get pools containing token1 OR token2, after getPoolByToken function on line 67:
+
+export const getPoolsByToken1ORToken2 = async (tokenId1: string,tokenId2: string) => {
+  return await db.queryPoolsToken1OrToken2(tokenId1, tokenId2);
+};
+
+*/
+////////////////////////////////////////////////////////////////////////
+
+// TESTING
+
+////////////////////////////////////////////////////////////////////////
+
+
 //let g = {'t1':{'t2':1,'t3':1},'t2':{'t3':1},'t3':{'t1':1,'t4':1},'t4':{'t3':1}}
 
 let gg = {};
@@ -275,11 +330,9 @@ let edges = [
     [ 'g', 'h' ]
 ];
 
-//console.log(g);
-addEdges(gg, edges);
-//console.log(g);
-//deleteNode(g,'c');
-//console.log(g);
+
+//addEdges(gg, edges);
+
 
 // let g = JSON.parse(JSON.stringify(gg));
 // console.log(g)
