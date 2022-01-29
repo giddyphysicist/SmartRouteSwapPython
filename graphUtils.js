@@ -1,4 +1,6 @@
 const { assert } = require('console');
+const {performance} = require('perf_hooks');
+
 
 function addEdge(g, edge) {
     let src = edge[0];
@@ -259,10 +261,38 @@ function getKShortestPaths(g, source, target, k) {
     return paths;
 }
 
+function getAllPathsBelowLengthN(g, source, target, N, limit = 1000) {
+    // use Yen's algorithm to find the paths of length N or below between source and target nodes in graph g.
+    let paths = [];
+    let gen = yenFromPy(g, source, target);
+    let currentPathLength = 0;
+    let count = 1;
+    while (currentPathLength <= N) {
+        try {
+            let res = gen.next().value;
+            if (res && !arrayContains(paths, res)) {
+                if (res.length > currentPathLength) {
+                    currentPathLength = res.length;
+                    if (currentPathLength > N) {
+                        break;
+                    }
+                }
+                paths.push(res);
+            }
+            count = count + 1;
+            if (count > limit) {
+                break;
+            }
+        } catch (e) {
+            break;
+        }
+    }
+    return paths;
+}
 
-//TODO: 
+//TODO:
 // port python lagrange algorithm
-// import pools from Ref UI. 
+// import pools from Ref UI.
 // create interface functions
 //  -- create graph object from list of pools.
 
@@ -286,6 +316,9 @@ async queryPoolsToken1OrToken2(tokenInId: string, tokenOutId: string) {
 
    //note, there might be some overlap... we'll need to remove the duplicates.
   let dup = [...normalItems1, ...normalItems2, ...reverseItems1, ...reverseItems2];
+  // First try this:
+  let result = [... new Set(dup.map(JSON.stringify))].map(JSON.parse);
+ // next try this:
   let result = [];
   let resultJson = [];
   for (n in dup) {
@@ -313,9 +346,8 @@ export const getPoolsByToken1ORToken2 = async (tokenId1: string,tokenId2: string
 
 ////////////////////////////////////////////////////////////////////////
 
-
 //let g = {'t1':{'t2':1,'t3':1},'t2':{'t3':1},'t3':{'t1':1,'t4':1},'t4':{'t3':1}}
-
+// let start = performance.now();
 let gg = {};
 //let edges = [['t1','t2'],['t1','t3'],['t3','t4']];
 let edges = [
@@ -330,9 +362,7 @@ let edges = [
     [ 'g', 'h' ]
 ];
 
-
-//addEdges(gg, edges);
-
+addEdges(gg, edges);
 
 // let g = JSON.parse(JSON.stringify(gg));
 // console.log(g)
@@ -353,7 +383,21 @@ let edges = [
 
 //console.log([...yenFromPy(gg,'c','h')])
 
-console.log(getKShortestPaths(gg, 'c', 'h', 18));
+// function arrayContains2(arr, obj) {
+//  // checks to see if the input array contains a reference object, obj, using
+//  // JSON.stringify() .
+//  let obj_json = JSON.stringify(obj);
+//  return arr.map(JSON.stringify).includes(obj_json);
+// }
+
+//console.log(getKShortestPaths(gg, 'c', 'h', 18));
+console.log(getAllPathsBelowLengthN(gg, 'c', 'h', 7));
+
+// var end = performance.now();
+// var duration = end - start;
+
+// console.log(`Code took ${duration} milli-seconds to run`);
+// console.log(`Code took ${duration / 1000} seconds to run`);
 
 // console.log(gen.next())
 // console.log('==================================')
@@ -372,28 +416,3 @@ console.log(getKShortestPaths(gg, 'c', 'h', 18));
 // console.log('==================================')
 // console.log('==================================')
 // console.log(gen.next())
-
-// console.log(shortestPath(gg,'c','h',[],ignore_edges=[ [ 'c', 'd' ], [ 'c', 'e' ], [ 'e', 'f' ], [ 'f', 'h' ] ]))
-
-//console.log(g)
-//console.log(shortestPath(g,'c','h',ignore_nodes=['e'],ignore_edges=[]))
-// deleteEdge(g,['c','d']);
-// console.log(shortestPath(g,'c','h'))
-
-//let path = shortestPath(g,'c','h').path;
-// path.unshift('c');
-//console.log(path)
-
-//console.log(null)
-
-// console.log(g);
-// deleteEdge(g,['c','d']);
-// console.log(g);
-
-// console.log(shortestPath(g,'c','h'))
-
-//let solutions = dijkstra(g,'c');
-//console.log(solutions);
-
-//console.log(typeof(solutions['t4'].dist));
-//console.log(Object.keys(solutions['t4']));
