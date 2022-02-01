@@ -48,12 +48,12 @@ function getRoutesFromPoolChain(poolChains) {
 function getOutputSingleHop(pool, inputToken, outputToken, totalInput) {
     let totalInput = new Big(totalInput);
     // check if pool is forward or backward for inputToken/outputToken cf. token1Id/token2Id
-    if (inputToken === pool.token1Id && outputToken === token2Id) {
+    if (inputToken === pool.token1Id && outputToken === pool.token2Id) {
         // forward Pool
         let reserves = {inputToken: new Big(pool.token1Supply),
                         outputToken: new Big(pool.token2Supply)};
 
-    } else if (inputToken === pool.token2Id && outputToken === token1Id) {
+    } else if (inputToken === pool.token2Id && outputToken === pool.token1Id) {
         // reverse pool
         let reserves = {outputToken: new Big(pool.token1Supply),
                         inputToken: new Big(pool.token2Supply)};
@@ -73,24 +73,43 @@ function getOutputDoubleHop(pools, inputToken, middleToken, outputToken, totalIn
     for (poolIndex in pools) {
         let p = pools[poolIndex];
         p['gamma'] = new Big(10000).minus(new Big(p.fee)).div(new Big(10000));
-    }
-}
-   
-    // p1,p2 = pools
-    // c1 = Decimal(p1['reserves'][middleToken])
-    // a1 = Decimal(p1['reserves'][inputToken])
-    // c2 = Decimal(p2['reserves'][middleToken])
-    // b2 = Decimal(p2['reserves'][outputToken])
-     
-    // gamma1 = p1['gamma']
-    // gamma2 = p2['gamma']
-    // num = totalInput * c1 * b2 * gamma1 * gamma2
-    // #Decimal(p1['reserves'][middleToken]) *Decimal(p2['reserves'][outputToken]) * p1['gamma'] * p2['gamma']
-    // denom = c2*a1 + totalInput * (c2*gamma1 + c1*gamma1*gamma2)
-    // #denom = Decimal(p1['reserves'][inputToken]) * Decimal(p2['reserves'][middleToken])
 
-    // #denom = denom + totalInput * (p1['gamma'] * c2 + p1['gamma']*p2['gamma']*c1)
-    // return num / denom
+    }
+    let p1 = pools[0];
+    let p2 = pools[1];
+
+    if (inputToken === p1.token1Id && middleToken === p1.token2Id) {
+        // forward Pool
+        p1['reserves'] = {inputToken: new Big(p1.token1Supply),
+                          middleToken: new Big(p1.token2Supply)};
+        } else if (middleToken === p1.token1Id && inputToken === p1.token2Id) {
+            //reverse pool
+            p1['reserves'] = {middleToken: new Big(p1.token1Supply),
+                              inputToken: new Big(p1.token2Supply)};
+    }
+
+    if (middleToken === p2.token1Id && outputToken === p2.token2Id) {
+        // forward Pool
+        p2['reserves'] = {middleToken: new Big(p2.token1Supply),
+                          outputToken: new Big(p2.token2Supply)};
+        } else if (outputToken === p2.token1Id && middleToken === p2.token2Id) {
+            //reverse pool
+            p2['reserves'] = {outputToken: new Big(p2.token1Supply),
+                              middleToken: new Big(p2.token2Supply)};
+    }
+
+    let c1 = new Big(p1.reserves.middleToken);
+    let a1 = new Big(p1.reserves.inputToken);
+    let c2 = new Big(p2.reserves.middleToken);
+    let b2 = new Big(p2.reserves.outputToken);
+    let gamma1 = p1.gamma;
+    let gamma2 = p2.gamma;
+    let num = totalInput.times(c1).times(b2).times(gamma1).times(gamma2);
+    let denom = c2.times(a1).plus((totalInput.times((c2.times(gamma1)).plus((c1.times(gamma1).times(gamma2))) )))
+    // denom = c2*a1 + totalInput * (c2*gamma1 + c1*gamma1*gamma2)
+
+    return num.div(denom)
+}
 
 // pool = 
 // {"id": 19,
