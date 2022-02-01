@@ -72,27 +72,25 @@ function getOutputDoubleHop(pools, inputToken, middleToken, outputToken, totalIn
     let totalInput = new Big(totalInput);
     for (poolIndex in pools) {
         let p = pools[poolIndex];
-        p['gamma'] = new Big(10000).minus(p.fee).div(new Big(10000));
+        p['gamma'] = new Big(10000).minus(new Big(p.fee)).div(new Big(10000));
     }
 }
-    for p in pools:
-        if 'gamma' not in p:
-            p['gamma'] = new Big(10000).minus(new Big(p.fee)).div(new Big(10000));
-    p1,p2 = pools
-    c1 = Decimal(p1['reserves'][middleToken])
-    a1 = Decimal(p1['reserves'][inputToken])
-    c2 = Decimal(p2['reserves'][middleToken])
-    b2 = Decimal(p2['reserves'][outputToken])
+   
+    // p1,p2 = pools
+    // c1 = Decimal(p1['reserves'][middleToken])
+    // a1 = Decimal(p1['reserves'][inputToken])
+    // c2 = Decimal(p2['reserves'][middleToken])
+    // b2 = Decimal(p2['reserves'][outputToken])
      
-    gamma1 = p1['gamma']
-    gamma2 = p2['gamma']
-    num = totalInput * c1 * b2 * gamma1 * gamma2
-    #Decimal(p1['reserves'][middleToken]) *Decimal(p2['reserves'][outputToken]) * p1['gamma'] * p2['gamma']
-    denom = c2*a1 + totalInput * (c2*gamma1 + c1*gamma1*gamma2)
-    #denom = Decimal(p1['reserves'][inputToken]) * Decimal(p2['reserves'][middleToken])
+    // gamma1 = p1['gamma']
+    // gamma2 = p2['gamma']
+    // num = totalInput * c1 * b2 * gamma1 * gamma2
+    // #Decimal(p1['reserves'][middleToken]) *Decimal(p2['reserves'][outputToken]) * p1['gamma'] * p2['gamma']
+    // denom = c2*a1 + totalInput * (c2*gamma1 + c1*gamma1*gamma2)
+    // #denom = Decimal(p1['reserves'][inputToken]) * Decimal(p2['reserves'][middleToken])
 
-    #denom = denom + totalInput * (p1['gamma'] * c2 + p1['gamma']*p2['gamma']*c1)
-    return num / denom
+    // #denom = denom + totalInput * (p1['gamma'] * c2 + p1['gamma']*p2['gamma']*c1)
+    // return num / denom
 
 // pool = 
 // {"id": 19,
