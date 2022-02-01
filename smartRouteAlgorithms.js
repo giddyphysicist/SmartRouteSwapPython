@@ -111,6 +111,32 @@ function getOutputDoubleHop(pools, inputToken, middleToken, outputToken, totalIn
     return num.div(denom)
 }
 
+function getOutputFromRoute(route, nodeRoute, allocation) {
+    if (new Big(allocation).eq(new Big(0))) {
+        return new Big(0);
+    } else {
+        let allocation = new Big(allocation);
+    }
+
+    if (route.length == 1) {
+        // single hop
+        let inputToken = nodeRoute[0];
+        let outputToken = nodeRoute[1];
+        let pool = route[0];
+        let output = getOutputSingleHop(pool, inputToken, outputToken, allocation);
+    } else if (route.length == 2) {
+        // DOUBLE HOP
+        let inputToken = nodeRoute[0];
+        let middleToken = nodeRoute[1];
+        let outputToken = nodeRoute[2];
+        let pools = route;
+        let output = getOutputDoubleHop(pools,inputToken,middleToken,outputToken, allocation);
+    }
+    return output;
+}
+
+
+
 // pool = 
 // {"id": 19,
 // "token1Id": "wrap.near",
