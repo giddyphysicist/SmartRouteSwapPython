@@ -2,14 +2,14 @@ const { default: Big } = require('big.js');
 
 function getPoolChainFromPaths(paths, pools) {
     let poolChains = [];
-    for (pathInd in paths) {
+    for (var pathInd in paths) {
         let path = paths[pathInd];
         let chain = [];
         let pairs = [];
         for (var i = 0; i < path.length - 1; i++) {
             pairs.push([ path[i], path[i + 1] ]);
         }
-        for (pairInd in pairs) {
+        for (var pairInd in pairs) {
             let pair = pairs[pairInd];
             let tokenPools = getPoolsByToken1ANDToken2(pools, pair[0], pair[1]);
             chain.push(tokenPools);
@@ -21,10 +21,10 @@ function getPoolChainFromPaths(paths, pools) {
 
 function getCulledPoolChains(poolChains, threshold = 0.001) {
     let newChains = [];
-    for (pathInd in poolChains) {
+    for (var pathInd in poolChains) {
         let path = poolChains[path];
         let newPath = [];
-        for (legInd in path) {
+        for (var legInd in path) {
             let leg = path[legInd];
             let culledPath = cullPoolsWithInsufficientLiquidity(leg, threshold);
             newPath.push(culledPath);
@@ -36,7 +36,7 @@ function getCulledPoolChains(poolChains, threshold = 0.001) {
 
 function getRoutesFromPoolChain(poolChains) {
     let routes = [];
-    for (pci in poolChains) {
+    for (var pci in poolChains) {
         let poolChain = poolChains[pci];
         //get cartesian product of each pool chain to get the list of routes.
         let newRoutes = cartesianProduct(poolChain);
@@ -70,7 +70,7 @@ function getOutputSingleHop(pool, inputToken, outputToken, totalInput) {
 
 function getOutputDoubleHop(pools, inputToken, middleToken, outputToken, totalInput) {
     let totalInput = new Big(totalInput);
-    for (poolIndex in pools) {
+    for (var poolIndex in pools) {
         let p = pools[poolIndex];
         p['gamma'] = new Big(10000).minus(new Big(p.fee)).div(new Big(10000));
 
@@ -135,6 +135,127 @@ function getOutputFromRoute(route, nodeRoute, allocation) {
     return output;
 }
 
+function getOptOutputVec(routes, nodeRoutes, totalInput) {
+    let allocations = getOptimalAllocationForRoutes(routes,nodeRoutes,totalInput);
+    let result = [];
+    for (var i in routes) {
+        let route = routes[i];
+        let nodeRoute = nodeRoutes[i];
+        let allocation = allocations[i];
+        let output = getOutputFromRoute(route, nodeRoute, allocation);
+        result.push(output);
+    }
+    return {'result':result,
+            'allocations':allocations}
+    //NOTE -- I made this return an object instead of the tuple returned in python. need to check the places it is called, and specify 
+    // result field instead of tuple 0 position, and allocations field instead of tuple 1 position.
+}
+
+function getBestOptOutput(routes, nodeRoutes, totalInput) {
+    let outputRefined = getOptOutputVecRefined(routes,nodeRoutes,totalInput).result;
+    let outputRaw = getOptOutputVec(routes, nodeRoutes, totalInput).result;
+    let res1 = new Big(0);
+    let res2 = new Big(0);
+    
+    for (var n in outputRefined) {
+        res1 = res1.plus(outputRefined[n]);
+    }
+    for (var nn in outputRaw) {
+        res2 = res2.plus(outputRaw[nn]);
+    }
+    if (res1.gt(res2)) {
+        return res1;
+    } else {
+        return res2;
+    }
+}
+
+function getBestOptInput(routes, nodeRoutes, totalInput) {
+    let refDict = getOptOutputVecRefined(routes,nodeRoutes,totalInput);
+    let outputRefined = refDict.result;
+    let inputRefined = refDict.allocations;
+    let rawDict = getOptOutputVec(routes, nodeRoutes, totalInput);
+    let outputRaw = rawDict.result;
+    let inputRaw = rawDict.allocations;
+    let res1 = new Big(0);
+    let res2 = new Big(0);
+    
+    for (var n in outputRefined) {
+        res1 = res1.plus(outputRefined[n]);
+    }
+    for (var nn in outputRaw) {
+        res2 = res2.plus(outputRaw[nn]);
+    }
+    if (res1.gt(res2)) {
+        return inputRefined;
+    } else {
+        return inputRaw;
+    }
+}
+
+function getOptOutputVecRefined(routes, nodeRoutes, totalInput) {
+    let initLengthRoutes = routes.length;
+    let directRouteInds = [];
+    for (var routeInd in routes) {
+        if (routes[routeInd].length == 1) {
+            directRouteInds.push(routeInd);
+        }
+    }
+    if (directRouteInds.length < 1) {
+        let allocations = getOptimalAllocationForRoutes(routes, nodeRoutes, totalInput);
+        let result = [];
+        for (var i in routes) {
+            let r = routes[i];
+            let nr = nodeRoutes[i];
+            let a = allocations[i];
+            let output = getOutputFromRoute(r,nr,a);
+            result.push(output);
+        }
+    } else {
+        let droutes = [];
+        let dnodeRoutes = [];
+        for (var dri in directRouteInds) {
+            droutes.push(routes[dri]);
+            dnodeRoutes.push(nodeRoutes[dri]);
+        }
+        let dallocations = getOptimalAllocationForRoutes(droutes,dnodeRoutes,totalInput);
+        let dallocDict = {}
+        for (var dd in dallocations) {
+            dallocDict[directRouteInds[dd]] = dallocations[dd];
+        }
+        let allocations = [];
+        for (var ii=0; ii<initLengthRoutes;ii++) {
+            if (directRouteInds.includes(ii)) {
+                allocations.push(dallocDict[ii]);
+            } else {
+                allocations.push(new Big(0));
+            }
+        }
+    }
+    let result = [];
+    for (var j in routes) {
+        let route = routes[j];
+        let nodeRoute = nodeRoutes[j];
+        let allocation = allocations[j];
+        let output = getOutputFromRoute(route,nodeRoute,allocation);
+        result.push(output);
+    }
+    return {'result':result,
+            'allocations':allocations}
+}
+
+
+// def getOptOutputVecRefined(routes,nodeRoutes,totalInput):
+//       
+//  
+        
+//     result = [getOutputFromRoute(r,nr,a) for r,nr,a in zip(routes,nodeRoutes,allocations)]
+        
+//     return result, allocations
+
+
+
+
 
 
 // pool = 
@@ -171,7 +292,7 @@ function getPoolsByToken1ANDToken2(pools, token1, token2) {
 
 function getLiqudityOfPoolsFromList(pools) {
     let liquidities = [];
-    for (poolInd in pools) {
+    for (var poolInd in pools) {
         let pool = pools[poolInd];
         let poolBigAmounts = pool.amounts.map((item) => new Big(item));
         let liquidity = poolBigAmounts[0].times(poolBigAmounts[1]);
@@ -192,7 +313,7 @@ function bigMax(arrayOfBigs) {
         return null;
     }
     let maxElem = arrayOfBigs[0];
-    for (ind in arrayOfBigs) {
+    for (var ind in arrayOfBigs) {
         let val = arrayOfBigs[ind];
         if (val.gt(maxElem)) {
             maxElem = val;
