@@ -1,4 +1,102 @@
 const { default: Big } = require('big.js');
+// Is any configuration needed to do floor or enforce the number of decimal places?
+
+function getBetaForRoute(route, path) {
+    if (route.length == 1) {
+        let p = route[0];
+        let beta = Big(p.reserves[path[0]]);
+    }
+    else if (route.length == 2) {
+        let p1 = route[0];
+        let p2 = route[1];
+        let beta = Big(p1.reserves[path[0]]) * Big(p2.reserves[path[1]]);
+    }
+    return beta;
+}
+
+function getEpsilonForRoute(route, path) {
+    if (route.length == 1) {
+        // Single Hop case
+        let p = route[0];
+        let gamma = (Big(10000) - Big(p.fee)) / Big(10000);
+        let epsilon = Big(gamma);
+    }
+    else if(route.length == 2) {
+        //Double Hop Case
+        let p1 = route[0];
+        let p2 = route[1];
+        let gamma1 = (Big(10000) - Big(p1.fee)) / Big(10000);
+        let gamma2 = (Big(10000) - Big(p2.fee)) / Big(10000);
+        let epsilon = Big(p2.reserves[path[1]]) * Big(gamma1) + Big(p1.reserves[path[1]]) * Big(gamma1 * Big(gamma2));
+    }
+    return epsilon;
+}
+
+function getAlphaForRoute(route, path) {
+    if (route.length == 1) {
+        let p = route[0];
+        let inputToken = path[0];
+        let outputToken = path[1];
+        let gamma = (Big(10000) - Big(p.fee)) / Big(10000);
+        let alpha = Big(p.reserves[inputToken]) * Big(p.reserves[outputToken]) * Big(gamma);
+    }
+    else if (route.length == 2) {
+        let p1 = route[0];
+        let p2 = route[1];
+        let inputToken = path[0];
+        let middleToken = path[1];
+        let outputToken = path[2];
+        let gamma1 = (Big(10000) - Big(p1.fee)) / Big(10000);
+        let gamma2 = (Big(10000) - Big(p2.fee)) / Big(10000);
+        let alpha1 = Big(p1.reserves[inputToken]) * Big(p1.reserves[middleToken]) * gamma1;
+        let alpha2 = Big(p2.reserves[middleToken]) * Big(p2.reserves[outputToken]) * gamma2;
+        let alpha = alpha1 * alpha2;
+    }
+    return alpha;
+}
+
+function getAlphaSumFromRoutes(routes, nodeRoutes) {
+    let alphaSum = 0;
+    for (i in routes) {
+        let route = routes[i];
+        let nodeRoute = nodeRoutes[i];
+        alphaSum.plus(Math.sqrt(getAlphaForRoute(route, nodeRoute)) / getEpsilonForRoute(route, nodeRoute))
+    }
+    return alphaSum;
+}
+
+function getBetaSumFromRoutes(routes, nodeRoutes) {
+    let betaSum = 0;
+    for (i in routes) {
+        let route = routes[i];
+        let nodeRoute = nodeRoutes[i];
+        betaSum.plus(getBetaForRoute(route, nodeRoute) / getEpsilonForRoute(route, nodeRoute))
+    }
+    return betaSum;
+}
+
+function getPhiFromRoutes(routes, nodeRoutes, totalInput) {
+    let alphaSum = getAlphaSumFromRoutes(routes, nodeRoutes);
+    let betaSum = getBetaSumFromRoutes(routes, nodeRoutes);
+    let phi = (Big(totalInput) + betaSum) / alphaSum;
+    return phi;
+}
+
+function getAllocationForRoute(phi, route, path) {
+    let alpha = getAlphaForRoute(route, path);
+    let beta = getBetaForRoute(route, path);
+    let epsilon = getEpsilonForRoute(route, path);
+    let allocation = (Math.abs(phi) * Math.sqrt(alpha) - beta) / epsilon;
+    return allocation;
+}
+
+function getAllocationVectorForRoutes(phi, routes, nodeRoutes) {
+    let allocationVec = [];
+    for (i in routes) {
+        allocationVec.push(getAllocationForRoute(phi, routes[i], nodeRoutes[i]));
+    }
+    return allocationVec;
+}
 
 function getPoolChainFromPaths(paths, pools) {
     let poolChains = [];

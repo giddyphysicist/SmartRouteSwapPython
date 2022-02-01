@@ -556,7 +556,7 @@ def getBetaForRoute(route, path):
     elif len(route) == 2:
         #double hop case
         p1,p2 = route
-        beta = Decimal(p1['reserves'][path[0]])*Decimal(p1['reserves'][path[1]])
+        beta = Decimal(p1['reserves'][path[0]])*Decimal(p1['reserves'][path[1]]) #??? should there be a p2 in here?
     return beta
 
 def getEpsilonForRoute(route,path):
@@ -570,7 +570,7 @@ def getEpsilonForRoute(route,path):
         p1,p2 = route
         p1['gamma'] = (Decimal(10000)-Decimal(p1['total_fee']))/Decimal(10000)
         p2['gamma'] = (Decimal(10000)-Decimal(p2['total_fee']))/Decimal(10000)
-        epsilon = Decimal(p2['reserves'][path[1]])*Decimal(p1['gamma']) + Decimal(p1['reserves'][path[1]])*Decimal(p1['gamma'])*Decimal(p2['gamma'])
+        epsilon = Decimal(p2['reserves'][path[1]])*Decimal(p1['gamma']) + Decimal(p1['reserves'][path[1]])*Decimal(p1['gamma'])*Decimal(p2['gamma']) # ??? Is this right?
     return epsilon
 
 def getAlphaForRoute(route,path):
