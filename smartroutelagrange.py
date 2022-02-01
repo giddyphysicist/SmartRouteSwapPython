@@ -505,14 +505,14 @@ def getPathsFromPools(pools=None, token1=None, token2=None):
   paths = list(nx.simple_paths.shortest_simple_paths(g, token1,token2))
   return paths
 
-def solveForPhiFromPaths(paths, totalInput,pools):
-  """Used to solve for lagrange multiplier variable given the particular paths
-  and the total input of initial token. 
-  """
-  betaSum = getBetaSumFromPaths(paths, pools)
-  alphaSum = getAlphaSumFromPaths(paths,pools)
-  phi = (Decimal(totalInput) + betaSum)  /alphaSum
-  return phi
+# def solveForPhiFromPaths(paths, totalInput,pools):
+#   """Used to solve for lagrange multiplier variable given the particular paths
+#   and the total input of initial token. 
+#   """
+#   betaSum = getBetaSumFromPaths(paths, pools)
+#   alphaSum = getAlphaSumFromPaths(paths,pools)
+#   phi = (Decimal(totalInput) + betaSum)  /alphaSum
+#   return phi
 
 def getPhiFromRoutes(routes,nodeRoutes, totalInput):
   """Solves for lagrange multiplier variable phi given a list of routes. 
@@ -526,19 +526,19 @@ def getPhiFromRoutes(routes,nodeRoutes, totalInput):
   phi = (Decimal(totalInput) + betaSum) / alphaSum
   return phi
 
-def getBetaSumFromPaths(paths, pools):
-    poolChains = getPoolChainFromPaths(paths, pools)
-    routes = getRoutesFromPoolChain(poolChains)
-    nodeRoutes = getNodeRoutesFromPathsAndPoolChains(paths, poolChains)
-    betaSum = sum([getBetaForRoute(route, nodeRoute)/getEpsilonForRoute(route, nodeRoute) for route,nodeRoute in zip(routes,nodeRoutes)])
-    return betaSum
+# def getBetaSumFromPaths(paths, pools):
+#     poolChains = getPoolChainFromPaths(paths, pools)
+#     routes = getRoutesFromPoolChain(poolChains)
+#     nodeRoutes = getNodeRoutesFromPathsAndPoolChains(paths, poolChains)
+#     betaSum = sum([getBetaForRoute(route, nodeRoute)/getEpsilonForRoute(route, nodeRoute) for route,nodeRoute in zip(routes,nodeRoutes)])
+#     return betaSum
 
-def getAlphaSumFromPaths(paths, pools):
-    poolChains = getPoolChainFromPaths(paths, pools)
-    routes = getRoutesFromPoolChain(poolChains)
-    nodeRoutes = getNodeRoutesFromPathsAndPoolChains(paths, poolChains)
-    alphaSum = sum([np.sqrt(getAlphaForRoute(route, nodeRoute))/getEpsilonForRoute(route,nodeRoute) for route,nodeRoute in zip(routes,nodeRoutes)])
-    return alphaSum
+# def getAlphaSumFromPaths(paths, pools):
+#     poolChains = getPoolChainFromPaths(paths, pools)
+#     routes = getRoutesFromPoolChain(poolChains)
+#     nodeRoutes = getNodeRoutesFromPathsAndPoolChains(paths, poolChains)
+#     alphaSum = sum([np.sqrt(getAlphaForRoute(route, nodeRoute))/getEpsilonForRoute(route,nodeRoute) for route,nodeRoute in zip(routes,nodeRoutes)])
+#     return alphaSum
 
 def getAlphaSumFromRoutes(routes, nodeRoutes):
     alphaSum = sum([np.sqrt(getAlphaForRoute(route, nodeRoute))/getEpsilonForRoute(route,nodeRoute) for route,nodeRoute in zip(routes,nodeRoutes)])
