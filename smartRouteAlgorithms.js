@@ -102,6 +102,69 @@ function getAllocationVectorForRoutes(phi, routes, nodeRoutes) {
     return allocationVec;
 }
 
+function getOptimalAllocationForRoutes(routes, nodeRoutes, totalInput) {
+    let totalInput = new Big(totalInput);
+    let phi = getPhiFromRoutes(routes,nodeRoutes,totalInput);
+    let allocations = getAllocationVectorForRoutes(phi,routes,nodeRoutes);
+    if (allocations.some((item)=>item.lt(new Big(0)))) {
+        allocations = reduceRoutes(routes,nodeRoutes,allocations,totalInput);
+    }
+    let sumAllocations = allocations.reduce((a,b)=> a.plus(b),new Big(0));
+    let normalizedAllocations = allocations.map((a)=>a.div(sumAllocations).times(new Big(totalInput)));
+    return normalizedAllocations;
+}
+
+function reduceRoutes(routes,nodeRoutes,allocationVec,totalInput) {
+    let totalInput = new Big(totalInput);
+    let goodIndices = [];
+    for (var i in allocationVec) {
+        let dx = allocationVec[i];
+        if (dx.gt(new Big(0))) {
+            goodIndices.push(i);
+        }
+    }
+    let newRoutes = [];
+    let newNodeRoutes = [];
+    for (var i in goodIndices) {
+        let goodIndex = goodIndices[i];
+        newRoutes.push(routes[goodIndex]);
+        newNodeRoutes.push(nodeRoutes[goodIndex]);
+    }
+    let allocationVec = getOptimalAllocationForRoutes(newRoutes, newNodeRoutes, totalInput);
+    let allocationDict = {};
+    for (var i in goodIndices) {
+        allocationDict[goodIndices[i]] = allocationVec[i];
+    }
+    let allocationVecNew = [];
+    for (var i in routes) {
+        if (goodIndices.includes(i)) {
+            allocationVecNew.push(allocationDict[i])
+        } else {
+            allocationVecNew.push(new Big(0));
+        }
+    }
+    return allocationVecNew;
+}
+
+function getNodeRoutesFromPathsAndPoolChains(paths, poolChains) {
+    let multiplicity = [];
+    for (var i in poolChains) {
+        let pc = poolChains[i];
+        let mul = pc.map((item)=>item.length).reduce((elem1,elem2)=>elem1*elem2,1);
+        multiplicity.push(mul);
+        }
+    let nodeRoutes = [];
+    for (var j in paths) {
+        let path = paths[j];
+        let m = multiplicity[j];
+        for (var k=0; k<m;k++) {
+            nodeRoutes.push(path);
+        }
+    }
+    return nodeRoutes;
+    }
+
+
 function getPoolChainFromPaths(paths, pools) {
     let poolChains = [];
     for (var pathInd in paths) {

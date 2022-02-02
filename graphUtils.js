@@ -24468,4 +24468,7 @@ console.log(pp)
 console.log(pp.length)
 console.log(Object.keys(mygraph).length)
 
-console.log(new Big(10000).minus(new Big(30)).div(new Big(10000)).toString())
+// console.log(new Big(10000).minus(new Big(30)).div(new Big(10000)).toString())
+
+// let arr = [new Big(10),new Big(20),new Big(30)];
+// console.log(arr.reduce((a,b)=>a.plus(b),new Big(0)).toString())
