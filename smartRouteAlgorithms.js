@@ -4,12 +4,12 @@ const { default: Big } = require('big.js');
 function getBetaForRoute(route, path) {
     if (route.length == 1) {
         let p = route[0];
-        let beta = Big(p.reserves[path[0]]);
+        let beta = new Big(p.reserves[path[0]]);
     }
     else if (route.length == 2) {
         let p1 = route[0];
         let p2 = route[1];
-        let beta = Big(p1.reserves[path[0]]) * Big(p2.reserves[path[1]]);
+        let beta = new Big(p1.reserves[path[0]]).times(new Big(p2.reserves[path[1]]));
     }
     return beta;
 }
@@ -18,16 +18,16 @@ function getEpsilonForRoute(route, path) {
     if (route.length == 1) {
         // Single Hop case
         let p = route[0];
-        let gamma = (Big(10000) - Big(p.fee)) / Big(10000);
+        let gamma = (new Big(10000).minus(new Big(p.fee))).div(new Big(10000));
         let epsilon = Big(gamma);
     }
     else if(route.length == 2) {
         //Double Hop Case
         let p1 = route[0];
         let p2 = route[1];
-        let gamma1 = (Big(10000) - Big(p1.fee)) / Big(10000);
-        let gamma2 = (Big(10000) - Big(p2.fee)) / Big(10000);
-        let epsilon = Big(p2.reserves[path[1]]) * Big(gamma1) + Big(p1.reserves[path[1]]) * Big(gamma1 * Big(gamma2));
+        let gamma1 = (new Big(10000).minus(new Big(p1.fee))).div(new Big(10000));
+        let gamma2 = (new Big(10000).minus(new Big(p2.fee))).div(Big(10000));
+        let epsilon = new Big(p2.reserves[path[1]]).times(new Big(gamma1)).plus(new Big(p1.reserves[path[1]]).times(gamma1).times(gamma2));
     }
     return epsilon;
 }
@@ -37,8 +37,8 @@ function getAlphaForRoute(route, path) {
         let p = route[0];
         let inputToken = path[0];
         let outputToken = path[1];
-        let gamma = (Big(10000) - Big(p.fee)) / Big(10000);
-        let alpha = Big(p.reserves[inputToken]) * Big(p.reserves[outputToken]) * Big(gamma);
+        let gamma = (new Big(10000).minus(new Big(p.fee))).div(new Big(10000));
+        let alpha = new Big(p.reserves[inputToken]).times(new Big(p.reserves[outputToken]).times(new Big(gamma)));
     }
     else if (route.length == 2) {
         let p1 = route[0];
@@ -46,31 +46,35 @@ function getAlphaForRoute(route, path) {
         let inputToken = path[0];
         let middleToken = path[1];
         let outputToken = path[2];
-        let gamma1 = (Big(10000) - Big(p1.fee)) / Big(10000);
-        let gamma2 = (Big(10000) - Big(p2.fee)) / Big(10000);
-        let alpha1 = Big(p1.reserves[inputToken]) * Big(p1.reserves[middleToken]) * gamma1;
-        let alpha2 = Big(p2.reserves[middleToken]) * Big(p2.reserves[outputToken]) * gamma2;
-        let alpha = alpha1 * alpha2;
+        let gamma1 = (new Big(10000).minus(Big(p1.fee))).div(new Big(10000));
+        let gamma2 = (new Big(10000).minus(new Big(p2.fee))).div(new Big(10000));
+        let alpha1 = new Big(p1.reserves[inputToken]).times(new Big(p1.reserves[middleToken])).times(gamma1);
+        let alpha2 = new Big(p2.reserves[middleToken]).times(new Big(p2.reserves[outputToken])).times(gamma2);
+        let alpha = alpha1.times(alpha2);
     }
     return alpha;
 }
 
 function getAlphaSumFromRoutes(routes, nodeRoutes) {
-    let alphaSum = 0;
-    for (i in routes) {
+    let alphaSum = new Big(0);
+    for (var i in routes) {
         let route = routes[i];
         let nodeRoute = nodeRoutes[i];
-        alphaSum.plus(Math.sqrt(getAlphaForRoute(route, nodeRoute)) / getEpsilonForRoute(route, nodeRoute))
+        let radical = new Big(getAlphaForRoute(route, nodeRoute)).sqrt();
+        let denom = new Big(getEpsilonForRoute(route, nodeRoute));
+        alphaSum = alphaSum.plus(radical.div(denom))
     }
     return alphaSum;
 }
 
 function getBetaSumFromRoutes(routes, nodeRoutes) {
-    let betaSum = 0;
-    for (i in routes) {
+    let betaSum = new Big(0);
+    for (var i in routes) {
         let route = routes[i];
         let nodeRoute = nodeRoutes[i];
-        betaSum.plus(getBetaForRoute(route, nodeRoute) / getEpsilonForRoute(route, nodeRoute))
+        let num = new Big(getBetaForRoute(route, nodeRoute));
+        let denom = new Big(getEpsilonForRoute(route, nodeRoute));
+        betaSum.plus(num.div(denom));
     }
     return betaSum;
 }
@@ -78,7 +82,7 @@ function getBetaSumFromRoutes(routes, nodeRoutes) {
 function getPhiFromRoutes(routes, nodeRoutes, totalInput) {
     let alphaSum = getAlphaSumFromRoutes(routes, nodeRoutes);
     let betaSum = getBetaSumFromRoutes(routes, nodeRoutes);
-    let phi = (Big(totalInput) + betaSum) / alphaSum;
+    let phi = (new Big(totalInput).plus(betaSum)).div(alphaSum);
     return phi;
 }
 
@@ -86,13 +90,13 @@ function getAllocationForRoute(phi, route, path) {
     let alpha = getAlphaForRoute(route, path);
     let beta = getBetaForRoute(route, path);
     let epsilon = getEpsilonForRoute(route, path);
-    let allocation = (Math.abs(phi) * Math.sqrt(alpha) - beta) / epsilon;
+    let allocation = ((new Big(phi).abs().times(new Big(alpha).sqrt())).minus(beta)).div(epsilon);
     return allocation;
 }
 
 function getAllocationVectorForRoutes(phi, routes, nodeRoutes) {
     let allocationVec = [];
-    for (i in routes) {
+    for (var i in routes) {
         allocationVec.push(getAllocationForRoute(phi, routes[i], nodeRoutes[i]));
     }
     return allocationVec;
