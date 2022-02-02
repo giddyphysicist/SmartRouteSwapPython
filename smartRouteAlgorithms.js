@@ -103,7 +103,7 @@ function getAllocationVectorForRoutes(phi, routes, nodeRoutes) {
 }
 
 function getOptimalAllocationForRoutes(routes, nodeRoutes, totalInput) {
-    let totalInput = new Big(totalInput);
+    var totalInput = new Big(totalInput);
     let phi = getPhiFromRoutes(routes,nodeRoutes,totalInput);
     let allocations = getAllocationVectorForRoutes(phi,routes,nodeRoutes);
     if (allocations.some((item)=>item.lt(new Big(0)))) {
@@ -115,7 +115,7 @@ function getOptimalAllocationForRoutes(routes, nodeRoutes, totalInput) {
 }
 
 function reduceRoutes(routes,nodeRoutes,allocationVec,totalInput) {
-    let totalInput = new Big(totalInput);
+    var totalInput = new Big(totalInput);
     let goodIndices = [];
     for (var i in allocationVec) {
         let dx = allocationVec[i];
@@ -130,7 +130,7 @@ function reduceRoutes(routes,nodeRoutes,allocationVec,totalInput) {
         newRoutes.push(routes[goodIndex]);
         newNodeRoutes.push(nodeRoutes[goodIndex]);
     }
-    let allocationVec = getOptimalAllocationForRoutes(newRoutes, newNodeRoutes, totalInput);
+    allocationVec = getOptimalAllocationForRoutes(newRoutes, newNodeRoutes, totalInput);
     let allocationDict = {};
     for (var i in goodIndices) {
         allocationDict[goodIndices[i]] = allocationVec[i];
@@ -211,7 +211,7 @@ function getRoutesFromPoolChain(poolChains) {
 }
 
 function getOutputSingleHop(pool, inputToken, outputToken, totalInput) {
-    let totalInput = new Big(totalInput);
+    var totalInput = new Big(totalInput);
     // check if pool is forward or backward for inputToken/outputToken cf. token1Id/token2Id
     if (inputToken === pool.token1Id && outputToken === pool.token2Id) {
         // forward Pool
@@ -234,7 +234,7 @@ function getOutputSingleHop(pool, inputToken, outputToken, totalInput) {
 }
 
 function getOutputDoubleHop(pools, inputToken, middleToken, outputToken, totalInput) {
-    let totalInput = new Big(totalInput);
+    var totalInput = new Big(totalInput);
     for (var poolIndex in pools) {
         let p = pools[poolIndex];
         p['gamma'] = new Big(10000).minus(new Big(p.fee)).div(new Big(10000));
@@ -411,7 +411,7 @@ function getOptOutputVecRefined(routes, nodeRoutes, totalInput) {
 
 
 function getBestOptimalAllocationsAndOutputs(pools,inputToken,outputToken,totalInput) {
-    let totalInput = new Big(totalInput);
+    var totalInput = new Big(totalInput);
     let paths = getPathsFromPools(pools, inputToken, outputToken);
     let poolChains = getPoolChainFromPaths(paths, pools);
     let routes = getRoutesFromPoolChain(poolChains);
@@ -502,7 +502,7 @@ function getSmartRouteSwapActions(pools, inputToken, outputToken, totalInput,sli
     if (!totalInput) {
         return [];
     }
-    let totalInput = new Big(totalInput);
+    var totalInput = new Big(totalInput);
     let resDict = getBestOptimalAllocationsAndOutputs(pools,inputToken,outputToken,totalInput);
     let allocations = resDict.allocations;
     let outputs = resDict.outputs;
@@ -640,5 +640,14 @@ function cullPoolsWithInsufficientLiquidity(pools, threshold = 0.001) {
 }
 
 function cartesianProduct(a) {
-    return a.reduce((a, b) => a.flatMap((d) => b.map((e) => [ d, e ].flat())));
-}
+    let result = a.reduce((a, b) => a.flatMap((d) => b.map((e) => [ d, e ].flat())));
+    return result;
+}}
+
+
+////////////////////////////////////
+
+// TESTS
+
+////////////////////////////////////
+
