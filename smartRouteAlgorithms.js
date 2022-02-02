@@ -410,18 +410,158 @@ function getOptOutputVecRefined(routes, nodeRoutes, totalInput) {
 }
 
 
-// def getOptOutputVecRefined(routes,nodeRoutes,totalInput):
-//       
-//  
+function getBestOptimalAllocationsAndOutputs(pools,inputToken,outputToken,totalInput) {
+    let totalInput = new Big(totalInput);
+    let paths = getPathsFromPools(pools, inputToken, outputToken);
+    let poolChains = getPoolChainFromPaths(paths, pools);
+    let routes = getRoutesFromPoolChain(poolChains);
+    let nodeRoutes = getNodeRoutesFromPathsAndPoolChains(paths, poolChains);
+    let allocations = getBestOptInput(routes,nodeRoutes,totalInput);
+    let outputs = getBestOptOutput(routes, nodeRoutes, totalInput);
+    return {"allocations":allocations,
+            "outputs":outputs,
+            "routes":routes,
+            "nodeRoutes":nodeRoutes};
+
+}
+
+
+function getActionListFromRoutesAndAllocations(routes, nodeRoutes, allocations,slippageTolerance) {
+    // TODO: need to add in minimumAmountOut for each action instead of a hop Multiplier
+    // TODO: need to consolidate sub-parallel swap paths - need middle token checks.
+    let actions = [];
+    for (var i in routes) {
+        let route = routes[i];
+        let nodeRoute = nodeRoutes[i];
+        let allocation = allocations[i];
+        if (allocation.eq(new Big(0))) {
+            continue;
+        }
+        if (route.length===1) {
+            //single hop. only one action.
+            let pool = route[0];
+            let poolId = pool.id;
+            let inputToken = nodeRoute[0];
+            let outputToken = nodeRoute[1];
+            let expectedAmountOut = getOutputSingleHop(pool,inputToken,outputToken,allocation);
+            let minimumAmountOut = expectedAmountOut.times(new Big(1).minus(slippageTolerance)).round().toString(); //Here, assume slippage tolerance is a fraction. So 1% would be 0.01
+            let action = {'pool_id':poolId,
+                          'token_in':inputToken,
+                          'token_out':outputToken,
+                          'amount_in': allocation.round().toString(),
+                          'min_amount_out':minimumAMountOut};
+            actions.push(action);
+    } else if (route.length === 2) {
+        // double hop. two actions.
+        let pool1 = route[0];
+        let pool2 = route[1];
+        let pool1Id = pool1.id;
+        let pool2Id = pool2.id;
+        let inputToken = nodeRoute[0];
+        let middleToken = nodeRoute[1];
+        let outputToken = nodeRoute[2];
+        let expectedAmountOutFirstHop = getOutputSingleHop(pool1,inputToken,middleToken,allocation);
+        let minimumAmountOutFirstHop = expectedAmountOutFirstHop.times(new Big(1).minus(slippageTolerance)).round().toString(); //Here, assume slippage tolerance is a fraction. So 1% would be 0.01
         
-//     result = [getOutputFromRoute(r,nr,a) for r,nr,a in zip(routes,nodeRoutes,allocations)]
-        
-//     return result, allocations
+        let action1 = {'pool_id':pool1Id,
+                        'token_in':inputToken,
+                        'token_out':middleToken,
+                        'amount_in': allocation.round().toString(),
+                        'min_amount_out':minimumAMountOutFirstHop};
+        let expectedFinalAmountOut = getOutputSingleHop(pool2,middleToken,outputToken,minimumAmountOutFirstHop);
+        let minimumAMountOutSecondHop = expectedFinalAmountOut.times(new Big(1).minus(slippageTolerance)).round().toString();
+        let action2 = {'pool_id':pool2Id,
+                        'token_in':middleToken,
+                        'token_out':outputToken,
+                        'amount_in': minimumAmountOutFirstHop,
+                        'min_amount_out':minimumAMountOutSecondHop};
+        actions.push(action1);
+        actions.push(action2);
+    }
+    return actions;
+}
+
+//     #middleTokenTotals = getMiddleTokenTotals(routes,nodeRoutes,allocations)
+//     #TODO: complete this function with middle token checks.
+
+
+//     #consider all routes of length 2 with non-zero allocation. (double-hops)
+//     # among these, check for parallel swaps. That is, check for common node routes
+//     # for first hop. Then check for common node routes on second hop. 
+//     # when common node routes occur for the first hop:
+//     # 1. Calculate the total expected output of intermediate token. 
+//     # 2. 
+//     # when common node routes occur for the second hop:
+//     # 1. get a ratio of the input allocations of the full routes associated with
+//     # these common node routes. allocate the total intermediate token output 
+//     # toward these 2nd hop routes in the same ratio as their route input allocations.
 
 
 
+function getSmartRouteSwapActions(pools, inputToken, outputToken, totalInput,slippageTolerance) {
+    if (!totalInput) {
+        return [];
+    }
+    let totalInput = new Big(totalInput);
+    let resDict = getBestOptimalAllocationsAndOutputs(pools,inputToken,outputToken,totalInput);
+    let allocations = resDict.allocations;
+    let outputs = resDict.outputs;
+    let routes = resDict.routes;
+    let nodeRoutes = resDict.routes;
+    let actions = getActionListFromRoutesAndAllocations(routes, nodeRoutes, allocations, slippageTolerance);
+    //     #Note, if there are multiple transactions for a single pool, it might lead to sub-optimal
+    //     #returns. This is due to the fact that the routes are treated as independent, where
+    //     #here, if one transaction goes through in a pool, it changes the price of the asset 
+    //     #before the second transaction can occur.
+
+    //     #combine same-pool transactions into single transaction:
+    let poolsUsedPerAction = actions.map((item)=>item.pool_id);
+    let axnSet = [];
+    let repeats = false;
+    for (var i in poolsUsedPerAction) {
+        if (axnSet.includes(poolsUsedPerAction[i])) {
+            repeats = true;
+            break;
+        } else {
+            axnSet.push(poolsUsedPerAction[i]);
+        }
+    }
+    if (repeats) {
+        let pid = {};
+        for (var ai in actions) {
+            let a = actions[ai];
+            let currentPoolId = t.pool_id;
+            if (Object.keys(pid).includes(currentPoolId)) {
+                pid.currentPoolId.push(a);
+            } else {
+                pid[currentPoolId] = [a];
+            };
+        }
+        let newActions = [];
+        let poolIds = Object.keys(pid);
+        for (var pi in poolIds) {
+            let poolId = poolIds[pi];
+            let actionList = pid[poolId];
+            let poolTotalInput = actionList.reduce((a,b)=>new Big(a.amount_in)+new Big(b.amount_in),new Big(0));
+            let inputToken = actionList[0].token_in;
+            let outputToken = actionList[0].token_out;
+            let pool = pools.filter((item)=> item.id===poolId)[0];
+            let expectedMinimumOutput = getOutputSingleHop(pool, inputToken, outputToken, poolTotalInput).times(new Big(1).minus(new Big(slippageTolerance)));
+            let newAction = {'pool_id':poolId,
+                            'token_in':inputToken,
+                            'token_out':outputToken,
+                            'amount_in': poolTotalInput.round().toString(),
+                            'min_amount_out':expectedMinimumOutput.round().toString()};
+            newActions.push(newAction);
+        }
+    }
+    return newActions;
+}
 
 
+
+    
+    
 
 // pool = 
 // {"id": 19,
