@@ -37,7 +37,7 @@ function getEpsilonForRoute(route, path) {
 function getAlphaForRoute(route, path) {
     if (!route.length) {route = [route]}
     if (route.length == 1) {
-        console.log('single hop')
+        //console.log('single hop')
         let p = route[0];
         let inputToken = path[0];
         let outputToken = path[1];
@@ -49,7 +49,7 @@ function getAlphaForRoute(route, path) {
         p['reserves'] = {[key1]:val1, [key2]:val2};
         var alpha = new Big(p.reserves[inputToken]).times(new Big(p.reserves[outputToken]).times(new Big(gamma)));
     } else if (route.length == 2) {
-        console.log('double hop')
+        //console.log('double hop')
         let p1 = route[0];
         let p2 = route[1];
         let key11 = p1.token1Id;
@@ -103,12 +103,12 @@ function getBetaSumFromRoutes(routes, nodeRoutes) {
 function getPhiFromRoutes(routes, nodeRoutes, totalInput) {
     let alphaSum = getAlphaSumFromRoutes(routes, nodeRoutes);
     let betaSum = getBetaSumFromRoutes(routes, nodeRoutes);
-    console.log('ALPHASUM IS ...')
-    console.log(alphaSum.toString())
-    console.log('BETASUM IS...')
-    console.log(betaSum.toString())
-    console.log('FOR ROUTES...')
-    console.log(routes)
+    // console.log('ALPHASUM IS ...')
+    // console.log(alphaSum.toString())
+    // console.log('BETASUM IS...')
+    // console.log(betaSum.toString())
+    // console.log('FOR ROUTES...')
+    // console.log(routes)
     let phi = new Big(totalInput).plus(betaSum).div(alphaSum);
     return phi;
 }
@@ -130,8 +130,12 @@ function getAllocationVectorForRoutes(phi, routes, nodeRoutes) {
 }
 
 function getOptimalAllocationForRoutes(routes, nodeRoutes, totalInput) {
+    console.log("CALLING GET OPTIMAL ALLOCATION FOR ROUTES:")
+    // console.log(routes)
     var totalInput = new Big(totalInput);
     let phi = getPhiFromRoutes(routes, nodeRoutes, totalInput);
+    console.log('PHI CALCULATED TO BE...')
+    console.log(phi.toString())
     let allocations = getAllocationVectorForRoutes(phi, routes, nodeRoutes);
     if (allocations.some((item) => item.lt(new Big(0)))) {
         allocations = reduceRoutes(routes, nodeRoutes, allocations, totalInput);
@@ -142,14 +146,19 @@ function getOptimalAllocationForRoutes(routes, nodeRoutes, totalInput) {
 }
 
 function reduceRoutes(routes, nodeRoutes, allocationVec, totalInput) {
+    console.log("RUNNING REDUCE ROUTES")
     var totalInput = new Big(totalInput);
     let goodIndices = [];
     for (var i in allocationVec) {
         let dx = allocationVec[i];
+        console.log('DX IS...')
+        console.log(dx.toString())
         if (dx.gt(new Big(0))) {
             goodIndices.push(i);
         }
     }
+    console.log('GOOD INDICES ARE...')
+    console.log(goodIndices)
     let newRoutes = [];
     let newNodeRoutes = [];
     for (var i in goodIndices) {
