@@ -95,7 +95,7 @@ function getBetaSumFromRoutes(routes, nodeRoutes) {
         let nodeRoute = nodeRoutes[i];
         let num = new Big(getBetaForRoute(route, nodeRoute));
         let denom = new Big(getEpsilonForRoute(route, nodeRoute));
-        betaSum.plus(num.div(denom));
+        betaSum = betaSum.plus(num.div(denom));
     }
     return betaSum;
 }
@@ -219,7 +219,7 @@ function getPoolChainFromPaths(paths, pools, threshold = 0.001) {
         poolChains.push(chain);
     }
     // return poolChains;
-    let culledPoolChains = getCulledPoolChains(poolChains, threshold)
+    let culledPoolChains = getCulledPoolChains(poolChains, 0)
     return culledPoolChains;
 }
 
@@ -24397,6 +24397,14 @@ let poolList = [
     }
   ].filter((item)=>item.token1Supply!="0"&&item.token2Supply!="0");
 
+  let pools = [];
+  let poolInds = [];
+  for (var i=0; i<poolList.length;i++) {
+      if (!poolInds.includes(poolList[i].id)) {
+          poolInds.push(poolList[i].id);
+          pools.push(poolList[i]);
+      }
+  }
 
 let inputToken = 'wrap.near'
 let outputToken = 'a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.factory.bridge.near'
@@ -24404,8 +24412,8 @@ let outputToken = 'a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.factory.bridge.near'
 let totalInput = new Big('100000000000000000000000');
 
 
-let paths = getPathsFromPools(poolList, inputToken, outputToken);
-let poolChains = getPoolChainFromPaths(paths, poolList);
+let paths = getPathsFromPools(pools, inputToken, outputToken);
+let poolChains = getPoolChainFromPaths(paths, pools);
 let routes = getRoutesFromPoolChain(poolChains)
 let nodeRoutes = getNodeRoutesFromPathsAndPoolChains(paths, poolChains);
  
@@ -24422,6 +24430,14 @@ console.log(outputs.toString())
 
 console.log(getOptOutputVecRefined(routes, nodeRoutes, totalInput).allocations.map((item)=>item.toString()))
 
+ console.log(routes[0])
+ console.log(routes[1])
+// console.log(routes.length)
+
+// console.log(routes)
+
+// console.log(getPathsFromPools(pools, inputToken, outputToken))
+// console.log(paths.length)
 // console.log(poolChains)
 //console.log(poolChains[2])
 // console.log(routes)

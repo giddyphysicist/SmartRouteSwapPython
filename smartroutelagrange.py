@@ -556,7 +556,7 @@ def getBetaForRoute(route, path):
     elif len(route) == 2:
         #double hop case
         p1,p2 = route
-        beta = Decimal(p1['reserves'][path[0]])*Decimal(p1['reserves'][path[1]]) #??? should there be a p2 in here?
+        beta = Decimal(p1['reserves'][path[0]])*Decimal(p2['reserves'][path[1]]) #??? should there be a p2 in here?
     return beta
 
 def getEpsilonForRoute(route,path):
