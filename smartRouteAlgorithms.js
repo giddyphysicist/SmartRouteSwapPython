@@ -1,4 +1,7 @@
 const { default: Big } = require('big.js');
+Big.DP = 40
+Big.NE = -40
+Big.PE = 40
 // Is any configuration needed to do floor or enforce the number of decimal places?
 
 function getBetaForRoute(route, path) {
@@ -24421,7 +24424,10 @@ let paths = getPathsFromPools(pools, inputToken, outputToken);
 let poolChains = getPoolChainFromPaths(paths, pools);
 let routes = getRoutesFromPoolChain(poolChains)
 let nodeRoutes = getNodeRoutesFromPathsAndPoolChains(paths, poolChains);
- 
+
+let allocations = getBestOptInput(routes, nodeRoutes, totalInput);
+console.log(allocations.map((item)=>item.toString()))
+
 
 let slippageTolerance = 0.001
 getSmartRouteSwapActions(pools, inputToken, outputToken, totalInput, slippageTolerance)
