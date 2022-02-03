@@ -507,6 +507,7 @@ function getActionListFromRoutesAndAllocations(routes, nodeRoutes, allocations, 
         if (allocation.eq(new Big(0))) {
             continue;
         }
+        if (!route.length) {route = [route]}
         if (route.length === 1) {
             //single hop. only one action.
             let pool = route[0];
@@ -520,7 +521,7 @@ function getActionListFromRoutesAndAllocations(routes, nodeRoutes, allocations, 
                 token_in: inputToken,
                 token_out: outputToken,
                 amount_in: allocation.round().toString(),
-                min_amount_out: minimumAMountOut
+                min_amount_out: minimumAmountOut.toString()
             };
             actions.push(action);
         } else if (route.length === 2) {
@@ -543,7 +544,7 @@ function getActionListFromRoutesAndAllocations(routes, nodeRoutes, allocations, 
                 token_in: inputToken,
                 token_out: middleToken,
                 amount_in: allocation.round().toString(),
-                min_amount_out: minimumAMountOutFirstHop
+                min_amount_out: minimumAmountOutFirstHop
             };
             let expectedFinalAmountOut = getOutputSingleHop(pool2, middleToken, outputToken, minimumAmountOutFirstHop);
             let minimumAMountOutSecondHop = expectedFinalAmountOut
@@ -587,7 +588,7 @@ function getSmartRouteSwapActions(pools, inputToken, outputToken, totalInput, sl
     let allocations = resDict.allocations;
     let outputs = resDict.outputs;
     let routes = resDict.routes;
-    let nodeRoutes = resDict.routes;
+    let nodeRoutes = resDict.nodeRoutes;
     let actions = getActionListFromRoutesAndAllocations(routes, nodeRoutes, allocations, slippageTolerance);
     //     #Note, if there are multiple transactions for a single pool, it might lead to sub-optimal
     //     #returns. This is due to the fact that the routes are treated as independent, where
@@ -607,27 +608,31 @@ function getSmartRouteSwapActions(pools, inputToken, outputToken, totalInput, sl
         }
     }
     if (repeats) {
-        let pid = {};
+        var pid = {};
         for (var ai in actions) {
             let a = actions[ai];
-            let currentPoolId = t.pool_id;
+            let currentPoolId = a.pool_id;
             if (Object.keys(pid).includes(currentPoolId)) {
                 pid.currentPoolId.push(a);
             } else {
                 pid[currentPoolId] = [ a ];
             }
         }
-        let newActions = [];
-        let poolIds = Object.keys(pid);
+        var newActions = [];
+        var poolIds = Object.keys(pid);
         for (var pi in poolIds) {
             let poolId = poolIds[pi];
             let actionList = pid[poolId];
-            let poolTotalInput = actionList.reduce((a, b) => new Big(a.amount_in) + new Big(b.amount_in), new Big(0));
+            console.log(actionList)
+            if (actionList.length==1) {
+                var poolTotalInput = new Big(actionList[0].amount_in)
+            } else {var poolTotalInput = actionList.reduce((a, b) => new Big(a.amount_in) + new Big(b.amount_in), new Big(0));}
+            
             let inputToken = actionList[0].token_in;
             let outputToken = actionList[0].token_out;
-            let pool = pools.filter((item) => item.id === poolId)[0];
+            let pool = pools.filter((item) => item.id.toString() === poolId)[0];
             let expectedMinimumOutput = getOutputSingleHop(pool, inputToken, outputToken, poolTotalInput).times(
-                new Big(1).minus(new Big(slippageTolerance))
+                (new Big(1).minus(new Big(slippageTolerance)))
             );
             let newAction = {
                 pool_id: poolId,
@@ -24417,21 +24422,25 @@ let poolChains = getPoolChainFromPaths(paths, pools);
 let routes = getRoutesFromPoolChain(poolChains)
 let nodeRoutes = getNodeRoutesFromPathsAndPoolChains(paths, poolChains);
  
-let phi = getPhiFromRoutes(routes, nodeRoutes,totalInput);
-console.log(phi)
+
+let slippageTolerance = 0.001
+getSmartRouteSwapActions(pools, inputToken, outputToken, totalInput, slippageTolerance)
+
+// let phi = getPhiFromRoutes(routes, nodeRoutes,totalInput);
+// console.log(phi)
 // console.log(nodeRoutes)
 // console.log(nodeRoutes.length)
-let allocations = getBestOptInput(routes, nodeRoutes, totalInput);
-console.log(allocations.map((item)=>item.toString()))
+// let allocations = getBestOptInput(routes, nodeRoutes, totalInput);
+// console.log(allocations.map((item)=>item.toString()))
 
-let outputs = getBestOptOutput(routes, nodeRoutes, totalInput);
-console.log(outputs.toString())
+// let outputs = getBestOptOutput(routes, nodeRoutes, totalInput);
+// console.log(outputs.toString())
 
 
-console.log(getOptOutputVecRefined(routes, nodeRoutes, totalInput).allocations.map((item)=>item.toString()))
+// console.log(getOptOutputVecRefined(routes, nodeRoutes, totalInput).allocations.map((item)=>item.toString()))
 
- console.log(routes[0])
- console.log(routes[1])
+//  console.log(routes[0])
+//  console.log(routes[1])
 // console.log(routes.length)
 
 // console.log(routes)
