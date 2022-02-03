@@ -118,7 +118,7 @@ print('![Shortest Path Matrix](shortest_path_1.png)', end='\n\n', file=mdf)
 print('''On this path matrix, we can see how many hops are required to get from any token to any token.
 The values of the diagonal are all zero, meaning it is the same token.
 The white bands are infinite, where there is no connection whatsoever.
-The points that show they are equal to 1 are direct swap opportuvities.
+The points that show they are equal to 1 are direct swap opportunities.
 The points that show they are equal to 2 will be enabled by smart routing, with a single intermediate hop.
 The few cases that equal 3 or 4 could be reached if more hops were enabled.
 ''', end='\n\n', file=mdf)
