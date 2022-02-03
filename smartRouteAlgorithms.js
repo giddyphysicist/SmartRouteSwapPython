@@ -490,6 +490,9 @@ function getBestOptimalAllocationsAndOutputs(pools, inputToken, outputToken, tot
     let routes = getRoutesFromPoolChain(poolChains);
     let nodeRoutes = getNodeRoutesFromPathsAndPoolChains(paths, poolChains);
     let allocations = getBestOptInput(routes, nodeRoutes, totalInput);
+    // fix integer rounding for allocations:
+    allocations = checkIntegerSumOfAllocations(allocations, totalInput)
+
     let outputs = getBestOptOutput(routes, nodeRoutes, totalInput);
     return {
         allocations: allocations,
@@ -506,7 +509,7 @@ function getActionListFromRoutesAndAllocations(routes, nodeRoutes, allocations, 
     for (var i in routes) {
         let route = routes[i];
         let nodeRoute = nodeRoutes[i];
-        let allocation = allocations[i];
+        let allocation = new Big(allocations[i]);
         if (allocation.eq(new Big(0))) {
             continue;
         }
