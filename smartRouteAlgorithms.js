@@ -137,6 +137,7 @@ function getOptimalAllocationForRoutes(routes, nodeRoutes, totalInput) {
     console.log('PHI CALCULATED TO BE...')
     console.log(phi.toString())
     let allocations = getAllocationVectorForRoutes(phi, routes, nodeRoutes);
+    if (allocations.every((item)=>item.lt(new Big(0)))) {console.log('all allocations were negative...'); allocations = allocations.map((item)=>item.times(new Big(-1.0)))}
     if (allocations.some((item) => item.lt(new Big(0)))) {
         allocations = reduceRoutes(routes, nodeRoutes, allocations, totalInput);
     }
@@ -151,8 +152,8 @@ function reduceRoutes(routes, nodeRoutes, allocationVec, totalInput) {
     let goodIndices = [];
     for (var i in allocationVec) {
         let dx = allocationVec[i];
-        console.log('DX IS...')
-        console.log(dx.toString())
+        // console.log('DX IS...')
+        // console.log(dx.toString())
         if (dx.gt(new Big(0))) {
             goodIndices.push(i);
         }
@@ -253,15 +254,15 @@ function getOutputSingleHop(pool, inputToken, outputToken, totalInput) {
     // check if pool is forward or backward for inputToken/outputToken cf. token1Id/token2Id
     if (inputToken === pool.token1Id && outputToken === pool.token2Id) {
         // forward Pool
-        let reserves = {
-            inputToken: new Big(pool.token1Supply),
-            outputToken: new Big(pool.token2Supply)
+        var reserves = {
+            [inputToken]: new Big(pool.token1Supply),
+            [outputToken]: new Big(pool.token2Supply)
         };
     } else if (inputToken === pool.token2Id && outputToken === pool.token1Id) {
         // reverse pool
-        let reserves = {
-            outputToken: new Big(pool.token1Supply),
-            inputToken: new Big(pool.token2Supply)
+        var reserves = {
+            [outputToken]: new Big(pool.token1Supply),
+            [inputToken]: new Big(pool.token2Supply)
         };
     } else {
         //got the wrong pool.
@@ -271,8 +272,11 @@ function getOutputSingleHop(pool, inputToken, outputToken, totalInput) {
         return new Big(0);
     }
     let gamma = new Big(10000).minus(new Big(pool.fee)).div(new Big(10000));
-    let num = totalInput.times(gamma).times(reserves.outputToken);
-    let denom = reserves.inputToken.plus(gamma.times(totalInput));
+    // console.log(totalInput)
+    // console.log(gamma)
+    // console.log(reserves)
+    let num = totalInput.times(gamma).times(reserves[outputToken]);
+    let denom = reserves[inputToken].plus(gamma.times(totalInput));
     return num.div(denom);
 }
 
@@ -330,7 +334,7 @@ function getOutputFromRoute(route, nodeRoute, allocation) {
     if (new Big(allocation).eq(new Big(0))) {
         return new Big(0);
     } else {
-        let allocation = new Big(allocation);
+        var allocation = new Big(allocation);
     }
     if (!route.length) {route = [route]};
     if (route.length == 1) {
@@ -403,6 +407,9 @@ function getBestOptInput(routes, nodeRoutes, totalInput) {
     for (var nn in outputRaw) {
         res2 = res2.plus(outputRaw[nn]);
     }
+    console.log('COMPARING SINGLE HOPS VS DOUBLE')
+    console.log(res1.toString())
+    console.log(res2.toString())
     if (res1.gt(res2)) {
         return inputRefined;
     } else {
@@ -414,13 +421,17 @@ function getOptOutputVecRefined(routes, nodeRoutes, totalInput) {
     let initLengthRoutes = routes.length;
     let directRouteInds = [];
     for (var routeInd in routes) {
-        if (routes[routeInd].length == 1) {
+        let route = routes[routeInd];
+        if (!route.length) {route = [route]}
+        if (route.length == 1) {
             directRouteInds.push(routeInd);
         }
     }
+    console.log('DIRECT ROUTE INDS ARE')
+    console.log(directRouteInds)
     if (directRouteInds.length < 1) {
-        let allocations = getOptimalAllocationForRoutes(routes, nodeRoutes, totalInput);
-        let result = [];
+        var allocations = getOptimalAllocationForRoutes(routes, nodeRoutes, totalInput);
+        var result = [];
         for (var i in routes) {
             let r = routes[i];
             let nr = nodeRoutes[i];
@@ -429,33 +440,39 @@ function getOptOutputVecRefined(routes, nodeRoutes, totalInput) {
             result.push(output);
         }
     } else {
+        // console.log('DOING SINGLE HOP ONLY')
         let droutes = [];
         let dnodeRoutes = [];
         for (var dri in directRouteInds) {
-            droutes.push(routes[dri]);
-            dnodeRoutes.push(nodeRoutes[dri]);
+            let ind = directRouteInds[dri];
+            droutes.push(routes[ind]);
+            dnodeRoutes.push(nodeRoutes[ind]);
         }
         let dallocations = getOptimalAllocationForRoutes(droutes, dnodeRoutes, totalInput);
         let dallocDict = {};
         for (var dd in dallocations) {
             dallocDict[directRouteInds[dd]] = dallocations[dd];
         }
-        let allocations = [];
+        var allocations = [];
+        
         for (var ii = 0; ii < initLengthRoutes; ii++) {
-            if (directRouteInds.includes(ii)) {
+            if (directRouteInds.includes(ii.toString())) {
+                //console.log('ADDING ALLOCATION FOR SINGLE ROUTE')
                 allocations.push(dallocDict[ii]);
             } else {
+
                 allocations.push(new Big(0));
             }
         }
+        var result = [];
+        for (var j in routes) {
+            let route = routes[j];
+            let nodeRoute = nodeRoutes[j];
+            let allocation = allocations[j];
+            let output = getOutputFromRoute(route, nodeRoute, allocation);
+            result.push(output);
     }
-    let result = [];
-    for (var j in routes) {
-        let route = routes[j];
-        let nodeRoute = nodeRoutes[j];
-        let allocation = allocations[j];
-        let output = getOutputFromRoute(route, nodeRoute, allocation);
-        result.push(output);
+   
     }
     return {
         result: result,
@@ -24384,7 +24401,7 @@ let poolList = [
 let inputToken = 'wrap.near'
 let outputToken = 'a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.factory.bridge.near'
 ///let outputToken = 'dbio.near'
-let totalInput = new Big('1000000000000000000');
+let totalInput = new Big('100000000000000000000000');
 
 
 let paths = getPathsFromPools(poolList, inputToken, outputToken);
@@ -24392,14 +24409,18 @@ let poolChains = getPoolChainFromPaths(paths, poolList);
 let routes = getRoutesFromPoolChain(poolChains)
 let nodeRoutes = getNodeRoutesFromPathsAndPoolChains(paths, poolChains);
  
-
+let phi = getPhiFromRoutes(routes, nodeRoutes,totalInput);
+console.log(phi)
 // console.log(nodeRoutes)
 // console.log(nodeRoutes.length)
 let allocations = getBestOptInput(routes, nodeRoutes, totalInput);
-console.log(allocations)
+console.log(allocations.map((item)=>item.toString()))
 
 let outputs = getBestOptOutput(routes, nodeRoutes, totalInput);
+console.log(outputs.toString())
 
+
+console.log(getOptOutputVecRefined(routes, nodeRoutes, totalInput).allocations.map((item)=>item.toString()))
 
 // console.log(poolChains)
 //console.log(poolChains[2])
@@ -24414,20 +24435,20 @@ let outputs = getBestOptOutput(routes, nodeRoutes, totalInput);
 //   let nodeRoutes = resDict.routes;
 //   let actions = getActionListFromRoutesAndAllocations(routes, nodeRoutes, allocations, slippageTolerance);
 
-let route = {
-    id: 19,
-    token1Id: 'wrap.near',
-    token2Id: 'a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.factory.bridge.near',
-    token1Supply: '458507706848275237144751',
-    token2Supply: '4773827',
-    fee: 20,
-    shares: '1433530386500514261296380',
-    update_time: 1643427419,
-    token0_price: '0',
-    reserves: {
-      'wrap.near': '458507706848275237144751',
-      'a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.factory.bridge.near': '4773827'
-    }
-  };
-  let path = ['wrap.near','a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.factory.bridge.near']
+// let route = {
+//     id: 19,
+//     token1Id: 'wrap.near',
+//     token2Id: 'a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.factory.bridge.near',
+//     token1Supply: '458507706848275237144751',
+//     token2Supply: '4773827',
+//     fee: 20,
+//     shares: '1433530386500514261296380',
+//     update_time: 1643427419,
+//     token0_price: '0',
+//     reserves: {
+//       'wrap.near': '458507706848275237144751',
+//       'a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.factory.bridge.near': '4773827'
+//     }
+//   };
+//   let path = ['wrap.near','a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.factory.bridge.near']
 

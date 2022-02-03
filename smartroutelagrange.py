@@ -634,7 +634,7 @@ def getOptimalAllocationForRoutes(routes, nodeRoutes, totalInput):
     phi = getPhiFromRoutes(routes, nodeRoutes, totalInput)
     allocations = getAllocationVectorForRoutes(phi, routes, nodeRoutes)
     if np.all(np.array(allocations) < 0):
-        # print('all allocations were <= zero.')
+        print('all allocations were <= zero.')
         allocations = [Decimal(-1.0) * a for a in allocations]
     if any([a<=0 for a in allocations]):
         # print(np.sum(np.array(allocations)<=0), ' allocations of ', len(allocations),' are <= zero')
@@ -835,7 +835,7 @@ def getOptOutputVecRefined(routes,nodeRoutes,totalInput):
             else:
                 allocations.append(Decimal(0))
         
-    result = [getOutputFromRoute(r,nr,a) for r,nr,a in zip(routes,nodeRoutes,allocations)]
+        result = [getOutputFromRoute(r,nr,a) for r,nr,a in zip(routes,nodeRoutes,allocations)]
         
     return result, allocations
 
