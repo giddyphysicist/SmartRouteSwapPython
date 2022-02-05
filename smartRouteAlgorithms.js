@@ -576,6 +576,7 @@ function getActionListFromRoutesAndAllocations(
 ) {
   // TODO: need to add in minimumAmountOut for each action instead of a hop Multiplier
   // TODO: need to consolidate sub-parallel swap paths - need middle token checks.
+  //console.log(allocations.map((item) => item.toString()))
   let actions = []
   for (var i in routes) {
     let route = routes[i]
@@ -861,6 +862,7 @@ function cartesianProduct(a) {
 
 function checkIntegerSumOfAllocations(allocations, totalInput) {
   var totalInput = new Big(totalInput)
+  var allocations = allocations.map((item) => item.round())
   let alloSum = allocations
     .map((item) => new Big(item))
     .reduce((a, b) => a.plus(b), new Big(0))
@@ -1283,19 +1285,19 @@ function stableSmart(inputToken, outputToken, totalInput, slippageTolerance) {
 
 // console.log(poolList)
 
-let pools = []
-let poolInds = []
-for (var i = 0; i < poolList.length; i++) {
-  if (!poolInds.includes(poolList[i].id)) {
-    poolInds.push(poolList[i].id)
-    pools.push(poolList[i])
-  }
-}
+// let pools = []
+// let poolInds = []
+// for (var i = 0; i < poolList.length; i++) {
+//   if (!poolInds.includes(poolList[i].id)) {
+//     poolInds.push(poolList[i].id)
+//     pools.push(poolList[i])
+//   }
+// }
 
-let inputToken = 'wrap.near'
-let outputToken = 'a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.factory.bridge.near'
-///let outputToken = 'dbio.near'
-let totalInput = new Big('10000000000000000000000')
+// let inputToken = 'wrap.near'
+// let outputToken = 'a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.factory.bridge.near'
+// ///let outputToken = 'dbio.near'
+// let totalInput = new Big('10000000000000000000000')
 
 // let paths = getPathsFromPools(pools, inputToken, outputToken);
 // let poolChains = getPoolChainFromPaths(paths, pools);
@@ -1305,95 +1307,95 @@ let totalInput = new Big('10000000000000000000000')
 // let allocations = getBestOptInput(routes, nodeRoutes, totalInput);
 // console.log(allocations.map((item)=>item.toString()))
 
-let slippageTolerance = 0.001
+//let slippageTolerance = 0.001
 // getSmartRouteSwapActions(pools, inputToken, outputToken, totalInput, slippageTolerance)
 
-let smallPools = [
-  {
-    id: 19,
-    token1Id: 'wrap.near',
-    token2Id: 'a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.factory.bridge.near',
-    token1Supply: '458507706848275237144751',
-    token2Supply: '4773827',
-    fee: 20,
-    shares: '1433530386500514261296380',
-    update_time: 1643427419,
-    token0_price: '0',
-    reserves: {
-      'wrap.near': '458507706848275237144751',
-      'a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.factory.bridge.near': '4773827',
-    },
-  },
-  {
-    id: 3,
-    token1Id: 'a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.factory.bridge.near',
-    token2Id: 'wrap.near',
-    token1Supply: '3261996451',
-    token2Supply: '304306342709289283750201906',
-    fee: 30,
-    shares: '8961777751403231002448648',
-    update_time: 1643427419,
-    token0_price: '0',
-  },
-]
+// let smallPools = [
+//   {
+//     id: 19,
+//     token1Id: 'wrap.near',
+//     token2Id: 'a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.factory.bridge.near',
+//     token1Supply: '458507706848275237144751',
+//     token2Supply: '4773827',
+//     fee: 20,
+//     shares: '1433530386500514261296380',
+//     update_time: 1643427419,
+//     token0_price: '0',
+//     reserves: {
+//       'wrap.near': '458507706848275237144751',
+//       'a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.factory.bridge.near': '4773827',
+//     },
+//   },
+//   {
+//     id: 3,
+//     token1Id: 'a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.factory.bridge.near',
+//     token2Id: 'wrap.near',
+//     token1Supply: '3261996451',
+//     token2Supply: '304306342709289283750201906',
+//     fee: 30,
+//     shares: '8961777751403231002448648',
+//     update_time: 1643427419,
+//     token0_price: '0',
+//   },
+// ]
 
-let sp = [smallPools[1]]
-let tp = [
-  {
-    id: 3,
-    token1Id: 'a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.factory.bridge.near',
-    token2Id: 'wrap.near',
-    token1Supply: '3261996451',
-    token2Supply: '304306342709289283750201906',
-    fee: 30,
-    shares: '8961777751403231002448648',
-    update_time: 1643427419,
-    token0_price: '0',
-  },
-  {
-    id: 4,
-    token1Id: 'a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.factory.bridge.near',
-    token2Id: 'wrap.near',
-    token1Supply: '3261996451',
-    token2Supply: '304306342709289283750201906',
-    fee: 30,
-    shares: '8961777751403231002448648',
-    update_time: 1643427419,
-    token0_price: '0',
-  },
-  {
-    id: 5,
-    token1Id: 'a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.factory.bridge.near',
-    token2Id: 'wrap.near',
-    token1Supply: '3261996451',
-    token2Supply: '304306342709289283750201906',
-    fee: 30,
-    shares: '8961777751403231002448648',
-    update_time: 1643427419,
-    token0_price: '0',
-  },
-]
+// let sp = [smallPools[1]]
+// let tp = [
+//   {
+//     id: 3,
+//     token1Id: 'a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.factory.bridge.near',
+//     token2Id: 'wrap.near',
+//     token1Supply: '3261996451',
+//     token2Supply: '304306342709289283750201906',
+//     fee: 30,
+//     shares: '8961777751403231002448648',
+//     update_time: 1643427419,
+//     token0_price: '0',
+//   },
+//   {
+//     id: 4,
+//     token1Id: 'a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.factory.bridge.near',
+//     token2Id: 'wrap.near',
+//     token1Supply: '3261996451',
+//     token2Supply: '304306342709289283750201906',
+//     fee: 30,
+//     shares: '8961777751403231002448648',
+//     update_time: 1643427419,
+//     token0_price: '0',
+//   },
+//   {
+//     id: 5,
+//     token1Id: 'a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.factory.bridge.near',
+//     token2Id: 'wrap.near',
+//     token1Supply: '3261996451',
+//     token2Supply: '304306342709289283750201906',
+//     fee: 30,
+//     shares: '8961777751403231002448648',
+//     update_time: 1643427419,
+//     token0_price: '0',
+//   },
+// ]
 
-console.log(
-  getSmartRouteSwapActions(
-    tp,
-    'wrap.near',
-    'a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.factory.bridge.near',
-    '1000000000000000000',
-    0.001,
-  ),
-)
+// console.log(
+//   getSmartRouteSwapActions(
+//     tp,
+//     'wrap.near',
+//     'a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.factory.bridge.near',
+//     '1000000000000000000',
+//     0.001,
+//   ),
+// )
 
-console.log(
-  checkIntegerSumOfAllocations(
-    [
-      new Big('333333333333333333'),
-      new Big('333333333333333333'),
-      new Big('333333333333333333'),
-    ],
-    new Big('1000000000000000000'),
-  ),
-)
+// console.log(
+//   checkIntegerSumOfAllocations(
+//     [
+//       new Big('3333333333333333333333'),
+//       new Big('3333333333333333333333'),
+//       new Big('3333333333333333333333'),
+//     ],
+//     new Big('10000000000000000000000'),
+//   ),
+// )
 // let sp = smallPools.reverse()
 
 // let paths = getPathsFromPools(sp, inputToken, outputToken)
