@@ -219,7 +219,7 @@ class MultiNodeJsonProvider(object):
         return ret
    
     def view_call_readable(self, account_id, method_name, args, finality='optimistic'):
-      """utitlity function for converting view functions binary outputs in to a 
+      """utility function for converting view functions binary outputs in to a 
       human-readable python dictionary format"""
       ret = self.view_call(account_id,method_name,args,finality=finality)
       b = "".join([chr(x) for x in ret["result"]])
@@ -255,6 +255,10 @@ def getNumberOfPools(refContract=REF_CONTRACT):
 def getUserDeposits(accountId, refContract=REF_CONTRACT):
     argString = f'{{"account_id":"{accountId}"}}'
     return conn.view_call_readable(refContract, 'get_deposits', argString.encode('utf-8'))
+
+def getReturn(poolId,tokenIn,tokenOut,amountIn,refContract=REF_CONTRACT):
+    argString = f'{{"token_in":"{tokenIn}","token_out":"{tokenOut}","pool_id":{poolId},"amount_in":"{amountIn}"}}'
+    return conn.view_call_readable(refContract, 'get_return', argString.encode('utf-8'))
 
 """## Ref Network, Graph, and Pool Functions"""
 
