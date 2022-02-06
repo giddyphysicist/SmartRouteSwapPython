@@ -1242,199 +1242,203 @@ function getGraphFromPoolList(poolList) {
 
 ////////////////////////////////////
 
-// let allocations = [ new Big(33), new Big(33), new Big(33) ];
-// let totalInput = new Big(100);
-// let res = checkIntegerSumOfAllocations(allocations, totalInput);
-// console.log(res);
-
 // check for stableswap.
 function stableSmart(inputToken, outputToken, totalInput, slippageTolerance) {
-  let stableCoins = [
-    'dac17f958d2ee523a2206206994597c13d831ec7.factory.bridge.near',
-    'a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.factory.bridge.near',
-    '6b175474e89094c44da98b954eedeac495271d0f.factory.bridge.near',
-  ]
+  //   let stableCoins = [
+  //     'dac17f958d2ee523a2206206994597c13d831ec7.factory.bridge.near',
+  //     'a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.factory.bridge.near',
+  //     '6b175474e89094c44da98b954eedeac495271d0f.factory.bridge.near',
+  //   ]
+  //   NOTE -- I found that the Ref UI codebase has these as a constant already. -- STABLE_TOKEN_IDS, STABLE_POOL_ID
 
-  if (stableCoins.includes(inputToken) && stableCoins.includes(outputToken)) {
+  if (
+    STABLE_TOKEN_IDS.includes(inputToken) &&
+    STABLE_TOKEN_IDS.includes(outputToken)
+  ) {
     //use stable swap only.
-    //STABLESWAP(inputToken, outputToken, totalInput, slippageTolerance)
+    console.log('USING STABLE SWAP ONLY...')
+    let firstAction = GETSTABLESWAPACTION(
+      (pool = STABLE_POOL_ID),
+      (inputToken = inputToken),
+      (outputToken = middleToken),
+      (amountIn = totalInput),
+      (slippageTolerance = slippageTolerance),
+    )
+    return [firstAction]
+    //STABLESWAP(poolId=STABLE_POOL_ID, inputToken, outputToken, totalInput, slippageTolerance)
   } else if (
-    stableCoins.includes(inputToken) &&
-    !stableCoins.includes(outputToken)
+    STABLE_TOKEN_IDS.includes(inputToken) &&
+    !STABLE_TOKEN_IDS.includes(outputToken)
   ) {
     // input is stable and output is not.
+    console.log(
+      'INPUT STABLE/ OUTPUT NOT, CHECKING STABLE ROUTES STARTING WITH INPUT...',
+    )
+
     // (A) try route inputToken-->stable2-->outputToken (stablePool-->simple pool)
     // (B) try route inputTokne-->stable3-->outputToken (stablePool-->simple pool)
     // (C) try normal smart route. (simple Pool-->simple pool)
     // compare outputs from A,B,C and use the one with maximum return.
+
+    var partialStableRoutes = []
+    var bestOutput = new Big(0)
+    var bestStableSwapActions = []
+    for (var i in STABLE_TOKEN_IDS) {
+      let middleToken = STABLE_TOKEN_IDS[i]
+      if (middleToken === inputToken) {
+        continue
+      }
+      let secondHopPools = getPoolsByToken1ANDToken2(
+        pools,
+        middleToken,
+        outputToken,
+      )
+
+      let firstAction = GETSTABLESWAPACTION(
+        (pool = STABLE_POOL_ID),
+        (inputToken = inputToken),
+        (outputToken = middleToken),
+        (amountIn = totalInput),
+        (slippageTolerance = slippageTolerance),
+      )
+      let middleTokenAmount = firstAction.min_amount_out
+      //scale to get minimum_amount_out
+      let minMiddleTokenAmount = new Big(middleTokenAmount)
+        .times(new Big(1).minus(slippageTolerance))
+        .round()
+        .toString()
+
+      let parallelSwapActions = GETPARALLELSWAPACTIONS(
+        (pools = secondHopPools),
+        (inputToken = middleToken),
+        (outputToken = outputToken),
+        (amountIn = minMiddleTokenAmount),
+        (slippageTolerance = slippageTolerance),
+      )
+      let stableResult = getExpectedOutputFromActions(
+        parallelSwapActions,
+        outputToken,
+      )
+      partialStableRoutes.push(stableResult)
+      if (new Big(stableResult).gt(bestOutput)) {
+        bestOutput = new Big(stableResult)
+        bestStableSwapActions = [firstAction, ...parallelSwapActions]
+      }
+    }
+    let smartRouteActions = getSmartRouteSwapActions(
+      pools,
+      inputToken,
+      outputToken,
+      totalInput,
+      slippageTolerance,
+    )
+    let smartRouteExpectedOutput = getExpectedOutputFromActions(
+      actions,
+      outputToken,
+    )
+    // now choose whichever solution gave the most output.
+    if (new Big(smartRouteExpectedOutput).gt(bestOutput)) {
+      return smartRouteActions
+    } else {
+      return bestStableSwapActions
+    }
   } else if (
     !stableCoins.includes(inputToken) &&
     stableCoins.includes(outputToken)
   ) {
+    console.log(
+      'INPUT NOT STABLE/ OUTPUT IS STABLE, CHECKING STABLE ROUTES ENDING WITH OUTPUT...',
+    )
+
     // input is not stable, output is.
     // (A) try route inputToken-->stable2-->outputToken (simple Pool-->stablepool)
     // (B) try route inputToken-->stable3-->outputToken (simple Pool-->stablepool)
     // (C) try normal smart route. (simple Pool-->simple pool)
     // compare outputs from A,B,C and use the one with maximum return.
+    var partialStableRoutes = []
+    var bestOutput = new Big(0)
+    var bestStableSwapActions = []
+    for (var i in STABLE_TOKEN_IDS) {
+      let middleToken = STABLE_TOKEN_IDS[i]
+      if (middleToken === inputToken) {
+        continue
+      }
+      let parallelSwapActions = GETPARALLELSWAPACTIONS(
+        (pools = pools),
+        (inputToken = inputToken),
+        (outputToken = middleToken),
+        (amountIn = totalInput),
+        (slippageTolerance = slippageTolerance),
+      )
+      let minMiddleTokenAmount = getExpectedOutputFromActions(
+        firstActions,
+        middleToken,
+      )
+      let lastAction = GETSTABLESWAPACTION(
+        (pool = STABLE_POOL_ID),
+        (inputToken = middleToken),
+        (outputToken = outputToken),
+        (amountIn = minMiddleTokenAmount),
+        (slippageTolerance = slippageTolerance),
+      )
+
+      let stableResult = lastAction.min_amount_out
+      partialStableRoutes.push(stableResult)
+      if (new Big(stableResult).gt(bestOutput)) {
+        bestOutput = new Big(stableResult)
+        bestStableSwapActions = [...parallelSwapActions, lastAction]
+      }
+    }
+    let smartRouteActions = getSmartRouteSwapActions(
+      pools,
+      inputToken,
+      outputToken,
+      totalInput,
+      slippageTolerance,
+    )
+    let smartRouteExpectedOutput = getExpectedOutputFromActions(
+      actions,
+      outputToken,
+    )
+    // now choose whichever solution gave the most output.
+    if (new Big(smartRouteExpectedOutput).gt(bestOutput)) {
+      return smartRouteActions
+    } else {
+      return bestStableSwapActions
+    }
   } else {
     //do normal smart route swap. (simple Pool-->simple pool)
+    console.log(
+      'NEITHER INPUT NOR OUTPUT IS STABLE. DOING NORMAL SMART ROUTING OVER SIMPLE POOLS',
+    )
+    let smartRouteActions = getSmartRouteSwapActions(
+      pools,
+      inputToken,
+      outputToken,
+      totalInput,
+      slippageTolerance,
+    )
+    return smartRouteActions
   }
 }
 
-// let poolList = data.testPools
+function getExpectedOutputFromActions(actions, outputToken) {
+  return actions
+    .filter((item) => item.token_out === outputToken)
+    .map((item) => new Big(item.min_amount_out))
+    .reduce((a, b) => a.plus(b), new Big(0))
+}
 
-// console.log(poolList)
+// let stable1 = 'dac17f958d2ee523a2206206994597c13d831ec7.factory.bridge.near'
+// let stable2 = 'a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.factory.bridge.near'
+// let stable3 = '6b175474e89094c44da98b954eedeac495271d0f.factory.bridge.near'
 
-// let pools = []
-// let poolInds = []
-// for (var i = 0; i < poolList.length; i++) {
-//   if (!poolInds.includes(poolList[i].id)) {
-//     poolInds.push(poolList[i].id)
-//     pools.push(poolList[i])
-//   }
-// }
+// stableSmart(stable1, stable2)
+// stableSmart(stable1, stable3)
+// stableSmart(stable2, stable3)
 
-// let inputToken = 'wrap.near'
-// let outputToken = 'a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.factory.bridge.near'
-// ///let outputToken = 'dbio.near'
-// let totalInput = new Big('10000000000000000000000')
-
-// let paths = getPathsFromPools(pools, inputToken, outputToken);
-// let poolChains = getPoolChainFromPaths(paths, pools);
-// let routes = getRoutesFromPoolChain(poolChains)
-// let nodeRoutes = getNodeRoutesFromPathsAndPoolChains(paths, poolChains);
-
-// let allocations = getBestOptInput(routes, nodeRoutes, totalInput);
-// console.log(allocations.map((item)=>item.toString()))
-
-//let slippageTolerance = 0.001
-// getSmartRouteSwapActions(pools, inputToken, outputToken, totalInput, slippageTolerance)
-
-// let smallPools = [
-//   {
-//     id: 19,
-//     token1Id: 'wrap.near',
-//     token2Id: 'a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.factory.bridge.near',
-//     token1Supply: '458507706848275237144751',
-//     token2Supply: '4773827',
-//     fee: 20,
-//     shares: '1433530386500514261296380',
-//     update_time: 1643427419,
-//     token0_price: '0',
-//     reserves: {
-//       'wrap.near': '458507706848275237144751',
-//       'a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.factory.bridge.near': '4773827',
-//     },
-//   },
-//   {
-//     id: 3,
-//     token1Id: 'a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.factory.bridge.near',
-//     token2Id: 'wrap.near',
-//     token1Supply: '3261996451',
-//     token2Supply: '304306342709289283750201906',
-//     fee: 30,
-//     shares: '8961777751403231002448648',
-//     update_time: 1643427419,
-//     token0_price: '0',
-//   },
-// ]
-
-// let sp = [smallPools[1]]
-// let tp = [
-//   {
-//     id: 3,
-//     token1Id: 'a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.factory.bridge.near',
-//     token2Id: 'wrap.near',
-//     token1Supply: '3261996451',
-//     token2Supply: '304306342709289283750201906',
-//     fee: 30,
-//     shares: '8961777751403231002448648',
-//     update_time: 1643427419,
-//     token0_price: '0',
-//   },
-//   {
-//     id: 4,
-//     token1Id: 'a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.factory.bridge.near',
-//     token2Id: 'wrap.near',
-//     token1Supply: '3261996451',
-//     token2Supply: '304306342709289283750201906',
-//     fee: 30,
-//     shares: '8961777751403231002448648',
-//     update_time: 1643427419,
-//     token0_price: '0',
-//   },
-//   {
-//     id: 5,
-//     token1Id: 'a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.factory.bridge.near',
-//     token2Id: 'wrap.near',
-//     token1Supply: '3261996451',
-//     token2Supply: '304306342709289283750201906',
-//     fee: 30,
-//     shares: '8961777751403231002448648',
-//     update_time: 1643427419,
-//     token0_price: '0',
-//   },
-// ]
-
-// console.log(
-//   getSmartRouteSwapActions(
-//     tp,
-//     'wrap.near',
-//     'a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.factory.bridge.near',
-//     '1000000000000000000',
-//     0.001,
-//   ),
-// )
-
-// console.log(
-//   checkIntegerSumOfAllocations(
-//     [
-//       new Big('3333333333333333333333'),
-//       new Big('3333333333333333333333'),
-//       new Big('3333333333333333333333'),
-//     ],
-//     new Big('10000000000000000000000'),
-//   ),
-// )
-// let sp = smallPools.reverse()
-
-// let paths = getPathsFromPools(sp, inputToken, outputToken)
-// let poolChains = getPoolChainFromPaths(paths, sp)
-// let routes = getRoutesFromPoolChain(poolChains)
-// let nodeRoutes = getNodeRoutesFromPathsAndPoolChains(paths, poolChains)
-
-// let allocations = getBestOptInput(routes, nodeRoutes, totalInput)
-// console.log(allocations.map((item)=>item.toString()))
-
-// let actions = getActionListFromRoutesAndAllocations(
-//   routes,
-//   nodeRoutes,
-//   allocations,
-//   slippageTolerance,
-// )
-
-// console.log(actions);
-
-//console.log(distillCommonPoolActions(actions))
-
-// console.log(
-//   getSmartRouteSwapActions(
-//     sp,
-//     inputToken,
-//     outputToken,
-//     totalInput,
-//     slippageTolerance,
-//   ),
-// )
-
-// [
-//     {
-//       pool_id: 3,
-//       token_in: 'wrap.near',
-//       token_out: 'a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.factory.bridge.near',
-//       amount_in: '10000000000000000000000',
-//       min_amount_out: '106763'
-//     }
-//   ]
+// stableSmart(stable1, 'wrap.near')
+// stableSmart('wrap.near', stable2)
+// stableSmart('wrap.near', 'dbio.near')
 
 module.exports = { getSmartRouteSwapActions }
