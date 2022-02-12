@@ -1,5 +1,6 @@
 const { default: Big } = require('big.js')
-const { poolList } = require('./testPoolsData.js')
+//const { poolList } = require('./testPoolsData.js')
+//const { testPools } = require('./testPoolsData2.js')
 Big.DP = 40
 Big.NE = -40
 Big.PE = 40
@@ -121,12 +122,6 @@ function getBetaSumFromRoutes(routes, nodeRoutes) {
 function getPhiFromRoutes(routes, nodeRoutes, totalInput) {
   let alphaSum = getAlphaSumFromRoutes(routes, nodeRoutes)
   let betaSum = getBetaSumFromRoutes(routes, nodeRoutes)
-  // console.log('ALPHASUM IS ...')
-  // console.log(alphaSum.toString())
-  // console.log('BETASUM IS...')
-  // console.log(betaSum.toString())
-  // console.log('FOR ROUTES...')
-  // console.log(routes)
   let phi = new Big(totalInput).plus(betaSum).div(alphaSum)
   return phi
 }
@@ -152,15 +147,10 @@ function getAllocationVectorForRoutes(phi, routes, nodeRoutes) {
 }
 
 function getOptimalAllocationForRoutes(routes, nodeRoutes, totalInput) {
-  // console.log("CALLING GET OPTIMAL ALLOCATION FOR ROUTES:")
-  // console.log(routes)
   var totalInput = new Big(totalInput)
   let phi = getPhiFromRoutes(routes, nodeRoutes, totalInput)
-  // console.log('PHI CALCULATED TO BE...')
-  // console.log(phi.toString())
   let allocations = getAllocationVectorForRoutes(phi, routes, nodeRoutes)
   if (allocations.every((item) => item.lt(new Big(0)))) {
-    console.log('all allocations were negative...')
     allocations = allocations.map((item) => item.times(new Big(-1.0)))
   }
   if (allocations.some((item) => item.lt(new Big(0)))) {
@@ -174,19 +164,14 @@ function getOptimalAllocationForRoutes(routes, nodeRoutes, totalInput) {
 }
 
 function reduceRoutes(routes, nodeRoutes, allocationVec, totalInput) {
-  // console.log("RUNNING REDUCE ROUTES")
   var totalInput = new Big(totalInput)
   let goodIndices = []
   for (var i in allocationVec) {
     let dx = allocationVec[i]
-    // console.log('DX IS...')
-    // console.log(dx.toString())
     if (dx.gt(new Big(0))) {
       goodIndices.push(i)
     }
   }
-  console.log('GOOD INDICES ARE...')
-  console.log(goodIndices)
   let newRoutes = []
   let newNodeRoutes = []
   for (var i in goodIndices) {
@@ -305,9 +290,6 @@ function getOutputSingleHop(pool, inputToken, outputToken, totalInput) {
     return new Big(0)
   }
   let gamma = new Big(10000).minus(new Big(pool.fee)).div(new Big(10000))
-  // console.log(totalInput)
-  // console.log(gamma)
-  // console.log(reserves)
   let num = totalInput.times(gamma).times(reserves[outputToken])
   let denom = reserves[inputToken].plus(gamma.times(totalInput))
   return num.div(denom)
@@ -451,9 +433,11 @@ function getBestOptInput(routes, nodeRoutes, totalInput) {
   let refDict = getOptOutputVecRefined(routes, nodeRoutes, totalInput)
   let outputRefined = refDict.result
   let inputRefined = refDict.allocations
+  inputRefined = checkIntegerSumOfAllocations(inputRefined, totalInput)
   let rawDict = getOptOutputVec(routes, nodeRoutes, totalInput)
   let outputRaw = rawDict.result
   let inputRaw = rawDict.allocations
+  inputRaw = checkIntegerSumOfAllocations(inputRaw, totalInput)
   let res1 = new Big(0)
   let res2 = new Big(0)
 
@@ -463,9 +447,6 @@ function getBestOptInput(routes, nodeRoutes, totalInput) {
   for (var nn in outputRaw) {
     res2 = res2.plus(outputRaw[nn])
   }
-  // console.log('COMPARING SINGLE HOPS VS DOUBLE')
-  // console.log(res1.toString())
-  // console.log(res2.toString())
   if (res1.gt(res2)) {
     return inputRefined
   } else {
@@ -485,8 +466,7 @@ function getOptOutputVecRefined(routes, nodeRoutes, totalInput) {
       directRouteInds.push(routeInd)
     }
   }
-  // console.log('DIRECT ROUTE INDS ARE')
-  // console.log(directRouteInds)
+
   if (directRouteInds.length < 1) {
     var allocations = getOptimalAllocationForRoutes(
       routes,
@@ -544,7 +524,7 @@ function getOptOutputVecRefined(routes, nodeRoutes, totalInput) {
   }
 }
 
-function getBestOptimalAllocationsAndOutputs(
+async function getBestOptimalAllocationsAndOutputs(
   pools,
   inputToken,
   outputToken,
@@ -558,7 +538,6 @@ function getBestOptimalAllocationsAndOutputs(
   let allocations = getBestOptInput(routes, nodeRoutes, totalInput)
   // fix integer rounding for allocations:
   allocations = checkIntegerSumOfAllocations(allocations, totalInput)
-
   let outputs = getBestOptOutput(routes, nodeRoutes, totalInput)
   return {
     allocations: allocations,
@@ -601,9 +580,9 @@ function getActionListFromRoutesAndAllocations(
         allocation,
       )
       let minimumAmountOut = expectedAmountOut
-        .times(new Big(1).minus(slippageTolerance))
+        .times(new Big(1).minus(new Big(slippageTolerance).div(100)))
         .round()
-        .toString() //Here, assume slippage tolerance is a fraction. So 1% would be 0.01
+        .toString() //Here, assume slippage tolerance is a percentage. So 1% would be 1.0
       let action = {
         pool_id: poolId,
         token_in: inputToken,
@@ -628,9 +607,9 @@ function getActionListFromRoutesAndAllocations(
         allocation,
       )
       let minimumAmountOutFirstHop = expectedAmountOutFirstHop
-        .times(new Big(1).minus(slippageTolerance))
+        .times(new Big(1).minus(new Big(slippageTolerance).div(100)))
         .round()
-        .toString() //Here, assume slippage tolerance is a fraction. So 1% would be 0.01
+        .toString() //Here, assume slippage tolerance is a percentage. So 1% would be 1.0
 
       let action1 = {
         pool_id: pool1Id,
@@ -646,7 +625,7 @@ function getActionListFromRoutesAndAllocations(
         minimumAmountOutFirstHop,
       )
       let minimumAMountOutSecondHop = expectedFinalAmountOut
-        .times(new Big(1).minus(slippageTolerance))
+        .times(new Big(1).minus(new Big(slippageTolerance).div(100)))
         .round()
         .toString()
       let action2 = {
@@ -677,7 +656,7 @@ function getActionListFromRoutesAndAllocations(
 //     # these common node routes. allocate the total intermediate token output
 //     # toward these 2nd hop routes in the same ratio as their route input allocations.
 
-function getSmartRouteSwapActions(
+async function getSmartRouteSwapActions(
   pools,
   inputToken,
   outputToken,
@@ -688,7 +667,7 @@ function getSmartRouteSwapActions(
     return []
   }
   var totalInput = new Big(totalInput)
-  let resDict = getBestOptimalAllocationsAndOutputs(
+  let resDict = await getBestOptimalAllocationsAndOutputs(
     pools,
     inputToken,
     outputToken,
@@ -704,11 +683,15 @@ function getSmartRouteSwapActions(
     allocations,
     slippageTolerance,
   )
-  let distilledActions = distillCommonPoolActions(actions)
+  let distilledActions = distillCommonPoolActions(
+    actions,
+    pools,
+    slippageTolerance,
+  )
   return distilledActions
 }
 
-function distillCommonPoolActions(actions) {
+function distillCommonPoolActions(actions, pools, slippageTolerance) {
   //     #Note, if there are multiple transactions for a single pool, it might lead to sub-optimal
   //     #returns. This is due to the fact that the routes are treated as independent, where
   //     #here, if one transaction goes through in a pool, it changes the price of the asset
@@ -742,7 +725,6 @@ function distillCommonPoolActions(actions) {
     for (var pi in poolIds) {
       let poolId = poolIds[pi]
       let actionList = pid[poolId]
-      console.log(actionList)
       if (actionList.length == 1) {
         var poolTotalInput = new Big(actionList[0].amount_in)
       } else {
@@ -760,7 +742,7 @@ function distillCommonPoolActions(actions) {
         inputToken,
         outputToken,
         poolTotalInput,
-      ).times(new Big(1).minus(new Big(slippageTolerance)))
+      ).times(new Big(1).minus(new Big(slippageTolerance).div(100)))
       let newAction = {
         pool_id: poolId,
         token_in: inputToken,
@@ -801,12 +783,22 @@ function getPoolsByToken1ORToken2(pools, token1, token2) {
   return filteredPools
 }
 
-function getPoolsByToken1ANDToken2(pools, token1, token2) {
+function getPoolsByToken1ANDToken2(
+  pools,
+  token1,
+  token2,
+  cullZeroLiquidityPools = true,
+) {
   let filteredPools = pools.filter(
     (item) =>
       (item.token1Id === token1 && item.token2Id === token2) ||
       (item.token1Id === token2 && item.token2Id === token1),
   )
+  if (cullZeroLiquidityPools) {
+    filteredPools = filteredPools.filter(
+      (item) => item.token1Supply != '0' && item.token2Supply != '0',
+    )
+  }
   return filteredPools
 }
 
@@ -862,7 +854,7 @@ function cartesianProduct(a) {
 
 function checkIntegerSumOfAllocations(allocations, totalInput) {
   var totalInput = new Big(totalInput)
-  var allocations = allocations.map((item) => item.round())
+  var allocations = allocations.map((item) => new Big(item).round())
   let alloSum = allocations
     .map((item) => new Big(item))
     .reduce((a, b) => a.plus(b), new Big(0))
@@ -911,7 +903,6 @@ function addEdge(g, edge) {
 function addEdges(g, edgeList) {
   for (var n in edgeList) {
     let edge = edgeList[n]
-    //console.log(edge);
     addEdge(g, edge)
   }
 }
@@ -1143,6 +1134,12 @@ function getKShortestPaths(g, source, target, k) {
     try {
       let res = gen.next().value
       if (res && !arrayContains(paths, res)) {
+        if (res.length > 3) {
+          console.log(
+            'found all hops of length 2 or less... breaking out of generator',
+          )
+          break
+        }
         paths.push(res)
       }
     } catch (e) {
@@ -1188,15 +1185,7 @@ function getPathsFromPools(pools, inputToken, outputToken) {
 
 async function getAllPathsBelowLengthN(g, source, target, N, limit = 100) {
   // use Yen's algorithm to find the paths of length N or below between source and target nodes in graph g.
-  // console.log("working with graph")
-  // console.log(g)
-  // console.log(`SOURCE IS ${source}`)
-  // console.log(`TARGET IS ${target}`)
   let paths = []
-  // console.log('INPUTS TO YENFROMPY:')
-  // console.log(g)
-  // console.log(source)
-  // console.log(target)
   let gen = await yenFromPy(g, source, target)
   let currentPathLength = 0
   let count = 1
@@ -1242,7 +1231,13 @@ function getGraphFromPoolList(poolList) {
 
 ////////////////////////////////////
 
-// check for stableswap.
+// TODO -- incorporate the following integrated function, which tries to
+// account for stablecoins within the context of smart routing.
+
+//TODO -- need the right API / hooks for GETSTABLESWAPACTION function and GETPARALLELSWAPACTIONS functions.
+
+//TODO -- transform the actions generated in this function into tranaction to execute.
+
 function stableSmart(inputToken, outputToken, totalInput, slippageTolerance) {
   //   let stableCoins = [
   //     'dac17f958d2ee523a2206206994597c13d831ec7.factory.bridge.near',
@@ -1440,5 +1435,14 @@ function getExpectedOutputFromActions(actions, outputToken) {
 // stableSmart(stable1, 'wrap.near')
 // stableSmart('wrap.near', stable2)
 // stableSmart('wrap.near', 'dbio.near')
+
+// console.log(
+//   getSmartRouteSwapActions(
+//     testPools,
+//     'dac17f958d2ee523a2206206994597c13d831ec7.factory.bridge.near',
+//     'meta-token.near',
+//     '100000000',
+//   ),
+// )
 
 module.exports = { getSmartRouteSwapActions }

@@ -5,7 +5,7 @@ test('Sanity check', () => {
   expect(true).toBe(true)
 })
 
-test('Checking Single Pool', () => {
+test('Checking Single Pool', async () => {
   let pools = [
     {
       id: 3,
@@ -23,8 +23,8 @@ test('Checking Single Pool', () => {
   let outputToken =
     'a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.factory.bridge.near'
   let totalInput = new Big('10000000000000000000000')
-  let slippageTolerance = 0.001
-  let result = getSmartRouteSwapActions(
+  let slippageTolerance = 0.1
+  let result = await getSmartRouteSwapActions(
     pools,
     inputToken,
     outputToken,
@@ -43,7 +43,7 @@ test('Checking Single Pool', () => {
   expect(JSON.stringify(result)).toBe(JSON.stringify(expected))
 })
 
-test('Checking Two Identical Pools', () => {
+test('Checking Two Identical Pools', async () => {
   let pools = [
     {
       id: 3,
@@ -72,8 +72,8 @@ test('Checking Two Identical Pools', () => {
   let outputToken =
     'a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.factory.bridge.near'
   let totalInput = new Big('10000000000000000000000')
-  let slippageTolerance = 0.001
-  let result = getSmartRouteSwapActions(
+  let slippageTolerance = 0.1
+  let result = await getSmartRouteSwapActions(
     pools,
     inputToken,
     outputToken,
@@ -99,7 +99,7 @@ test('Checking Two Identical Pools', () => {
   expect(JSON.stringify(result)).toBe(JSON.stringify(expected))
 })
 
-test('Checking Single-Route Double-Hop (token1 --> token2 --> token3', () => {
+test('Checking Single-Route Double-Hop (token1 --> token2 --> token3', async () => {
   let pools = [
     {
       id: 1,
@@ -128,8 +128,8 @@ test('Checking Single-Route Double-Hop (token1 --> token2 --> token3', () => {
   let outputToken =
     'a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.factory.bridge.near'
   let totalInput = new Big('10000000000000000000000')
-  let slippageTolerance = 0.001
-  let result = getSmartRouteSwapActions(
+  let slippageTolerance = 0.1
+  let result = await getSmartRouteSwapActions(
     pools,
     inputToken,
     outputToken,
@@ -155,7 +155,7 @@ test('Checking Single-Route Double-Hop (token1 --> token2 --> token3', () => {
   expect(JSON.stringify(result)).toBe(JSON.stringify(expected))
 })
 
-test('Checking Three Identical Pools', () => {
+test('Checking Three Identical Pools', async () => {
   let pools = [
     {
       id: 3,
@@ -195,8 +195,8 @@ test('Checking Three Identical Pools', () => {
   let outputToken =
     'a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.factory.bridge.near'
   let totalInput = new Big('10000000000000000000000')
-  let slippageTolerance = 0.001
-  let result = getSmartRouteSwapActions(
+  let slippageTolerance = 0.1
+  let result = await getSmartRouteSwapActions(
     pools,
     inputToken,
     outputToken,
