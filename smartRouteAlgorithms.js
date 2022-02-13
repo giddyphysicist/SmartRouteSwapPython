@@ -1,6 +1,5 @@
 const { default: Big } = require('big.js')
 //const { poolList } = require('./testPoolsData.js')
-//const { testPools } = require('./testPoolsData2.js')
 Big.DP = 40
 Big.NE = -40
 Big.PE = 40
@@ -524,7 +523,8 @@ function getOptOutputVecRefined(routes, nodeRoutes, totalInput) {
   }
 }
 
-async function getBestOptimalAllocationsAndOutputs(
+// async function getBestOptimalAllocationsAndOutputs(
+function getBestOptimalAllocationsAndOutputs(
   pools,
   inputToken,
   outputToken,
@@ -539,11 +539,160 @@ async function getBestOptimalAllocationsAndOutputs(
   // fix integer rounding for allocations:
   allocations = checkIntegerSumOfAllocations(allocations, totalInput)
   let outputs = getBestOptOutput(routes, nodeRoutes, totalInput)
-  return {
+  let result = {
     allocations: allocations,
     outputs: outputs,
     routes: routes,
     nodeRoutes: nodeRoutes,
+  }
+  // console.log('RESULT IS...\n\n\n')
+  // console.log(result)
+  return result
+}
+
+function getHopsFromRoutes(routes, nodeRoutes, allocations) {
+  let hops = []
+  for (var i in routes) {
+    var route = routes[i]
+    var nodeRoute = nodeRoutes[i]
+    var allocation = allocations[i]
+    if (!route.length) {
+      route = [route]
+    }
+    if (!route[0]) {
+      continue
+    }
+    let hop = {
+      pool: route[0],
+      allocation: allocation,
+      inputToken: nodeRoute[0],
+      outputToken: nodeRoute[1],
+    }
+    hops.push(hop)
+  }
+  return hops
+}
+
+function distillHopsByPool(hops) {
+  let distilledHops = []
+  let poolIds = []
+  let poolId2allocation = {}
+  for (var i in hops) {
+    let hop = hops[i]
+    if (hop.allocation === '0') {
+      continue
+    }
+    console.log(`HOP ${i} IS...`)
+    console.log(hop)
+    let poolId = hop.pool['id']
+    if (poolIds.includes(poolId)) {
+      poolId2allocation[poolId] = new Big(poolId2allocation[poolId])
+        .plus(new Big(hop.allocation))
+        .toString()
+    } else {
+      poolId2allocation[poolId] = new Big(hop.allocation).toString()
+      poolIds.push(poolId)
+    }
+  }
+  // let poolsWithOrder = [...new Set(...hops.map((item) => item.pool))]
+  let keys = Object.keys(poolId2allocation)
+  for (var j in keys) {
+    let poolId = keys[j]
+    let hop = hops.filter(
+      (item) => item.pool.id.toString() === poolId.toString(),
+    )[0]
+    let distilledHop = {
+      pool: hop.pool,
+      allocation: poolId2allocation[poolId],
+      inputToken: hop.inputToken,
+      outputToken: hop.outputToken,
+    }
+    distilledHops.push(distilledHop)
+  }
+  return distilledHops
+}
+
+function getDistilledHopActions(distilledHops, slippageTolerance) {
+  let actions = []
+  for (var i in distilledHops) {
+    let hop = distilledHops[i]
+    let expectedAmountOut = getOutputSingleHop(
+      hop.pool,
+      hop.inputToken,
+      hop.outputToken,
+      hop.allocation,
+    )
+    let minimumAmountOut = new Big(expectedAmountOut)
+      .times(new Big(1).minus(new Big(slippageTolerance).div(100)))
+      .round()
+      .toString() //Here, assume slippage tolerance is a percentage. So 1% would be 1.0
+    let action = {
+      pool_id: hop.pool.id,
+      token_in: hop.inputToken,
+      token_out: hop.outputToken,
+      amount_in: hop.allocation,
+      min_amount_out: minimumAmountOut,
+    }
+    actions.push(action)
+  }
+  return actions
+}
+function getMiddleTokenTotalsFromFirstHopActions(firstHopActions) {
+  let middleTokens = [...new Set(firstHopActions.map((item) => item.token_out))]
+  let middleTokenTotals = {}
+  for (var i in middleTokens) {
+    let middleToken = middleTokens[i]
+    let mtActions = firstHopActions.filter(
+      (item) => item.token_out === middleToken,
+    )
+    let mtTotal = mtActions
+      .map((item) => new Big(item.min_amount_out))
+      .reduce((a, b) => a.plus(b), new Big(0))
+      .toString()
+    middleTokenTotals[middleToken] = mtTotal
+  }
+  return middleTokenTotals
+}
+function getRoutesAndAllocationsForMiddleToken(
+  routes,
+  nodeRoutes,
+  allocations,
+  middleToken,
+  middleTokenTotal,
+) {
+  // get routes that use middle token.
+  // (input route alloction) /sum(input allocations of routes with middle token) * (total_middleToken)
+  let mask = []
+  for (var i in nodeRoutes) {
+    if (nodeRoutes[i][1] === middleToken) {
+      mask.push(true)
+    } else {
+      mask.push(false)
+    }
+  }
+  let froutes = []
+  let fallocations = []
+  let fnoderoutes = []
+  for (var i in routes) {
+    if (mask[i]) {
+      froutes.push(routes[i])
+      fallocations.push(allocations[i])
+      fnoderoutes.push(nodeRoutes[i])
+    }
+  }
+  let sumfallocations = fallocations.reduce(
+    (a, b) => new Big(a).plus(new Big(b)),
+    new Big(0),
+  )
+  let middleAllocations = fallocations.map((item) =>
+    new Big(item).div(sumfallocations).times(new Big(middleTokenTotal)),
+  )
+  let secondHopRoutes = froutes.map((item) => [item[1]])
+  let secondHopNodeRoutes = fnoderoutes.map((item) => [item[1], item[2]])
+  return {
+    routes: secondHopRoutes,
+    nodeRoutes: secondHopNodeRoutes,
+    allocations: middleAllocations,
   }
 }
 
@@ -553,7 +702,59 @@ function getActionListFromRoutesAndAllocations(
   allocations,
   slippageTolerance,
 ) {
-  // TODO: need to add in minimumAmountOut for each action instead of a hop Multiplier
+  var actions = []
+  let firstHops = getHopsFromRoutes(routes, nodeRoutes, allocations)
+  let distilledFirstHops = distillHopsByPool(firstHops)
+  let firstHopActions = getDistilledHopActions(
+    distilledFirstHops,
+    slippageTolerance,
+  )
+  actions.push(...firstHopActions)
+  let middleTokenTotals = getMiddleTokenTotalsFromFirstHopActions(
+    firstHopActions,
+  )
+  let middleTokens = Object.keys(middleTokenTotals)
+  for (var tokenIndex in middleTokens) {
+    let middleToken = middleTokens[tokenIndex]
+    let middleTokenTotal = middleTokenTotals[middleToken]
+    let middleTokenRoutesWithAllocations = getRoutesAndAllocationsForMiddleToken(
+      routes,
+      nodeRoutes,
+      allocations,
+      middleToken,
+      middleTokenTotal,
+    )
+    let middleTokenRoutes = middleTokenRoutesWithAllocations.routes
+    let middleTokenAllocations = middleTokenRoutesWithAllocations.allocations
+    let middleTokenNodeRoutes = middleTokenRoutesWithAllocations.nodeRoutes
+    let secondHops = getHopsFromRoutes(
+      middleTokenRoutes,
+      middleTokenNodeRoutes,
+      middleTokenAllocations,
+    )
+    let distilledSecondHopsForToken = distillHopsByPool(secondHops)
+    let secondHopActionsForToken = getDistilledHopActions(
+      distilledSecondHopsForToken,
+      slippageTolerance,
+    )
+    actions.push(...secondHopActionsForToken)
+  }
+  // loop over middle tokens. check routes that use middle token.
+  //use ratio (input route alloction) /sum(input allocations of routes with middle token) * (total_middleToken)
+  // to get 2nd hop allocations.
+  // distilled2ndHopsForToken = distillHopsByPool(secondHopAllocationForToken)
+  // secondHopActionsForToken = getDistilledHopActions(distilled2ndHopsForToken)
+
+  //TODO: NEED TO RUN INTEGER ROUNDING FUNCTION ON MIDDLE TOKEN ALLOCATIONS
+  return actions
+}
+
+function getActionListFromRoutesAndAllocationsORIG(
+  routes,
+  nodeRoutes,
+  allocations,
+  slippageTolerance,
+) {
   // TODO: need to consolidate sub-parallel swap paths - need middle token checks.
   //console.log(allocations.map((item) => item.toString()))
   let actions = []
@@ -656,7 +857,7 @@ function getActionListFromRoutesAndAllocations(
 //     # these common node routes. allocate the total intermediate token output
 //     # toward these 2nd hop routes in the same ratio as their route input allocations.
 
-async function getSmartRouteSwapActions(
+function getSmartRouteSwapActions(
   pools,
   inputToken,
   outputToken,
@@ -667,7 +868,8 @@ async function getSmartRouteSwapActions(
     return []
   }
   var totalInput = new Big(totalInput)
-  let resDict = await getBestOptimalAllocationsAndOutputs(
+  let resDict = getBestOptimalAllocationsAndOutputs(
+    // let resDict = await getBestOptimalAllocationsAndOutputs(
     pools,
     inputToken,
     outputToken,
@@ -1436,13 +1638,39 @@ function getExpectedOutputFromActions(actions, outputToken) {
 // stableSmart('wrap.near', stable2)
 // stableSmart('wrap.near', 'dbio.near')
 
-// console.log(
-//   getSmartRouteSwapActions(
-//     testPools,
-//     'dac17f958d2ee523a2206206994597c13d831ec7.factory.bridge.near',
-//     'meta-token.near',
-//     '100000000',
-//   ),
+const { testPools } = require('./testPoolsData2.js')
+
+let res = getSmartRouteSwapActions(
+  testPools,
+  'dac17f958d2ee523a2206206994597c13d831ec7.factory.bridge.near',
+  'meta-token.near',
+  '100000000',
+  '0.1',
+)
+
+console.log(res)
+
+// const { testPools } = require('./testPoolsData4.js')
+
+// let res = getSmartRouteSwapActions(
+//   testPools,
+//   'wrap.testnet',
+//   'usdt.fakes.testnet',
+//   '1000000000000000000000000',
+//   '0.1',
 // )
+
+// let resDict = getBestOptimalAllocationsAndOutputs(
+//   testPools,
+//   'wrap.testnet',
+//   'usdt.fakes.testnet',
+//   '1000000000000000000000000',
+// )
+
+// console.log(resDict.allocations)
+// console.log(resDict.nodeRoutes)
+// console.log(resDict.routes)
+
+// console.log(res)
 
 module.exports = { getSmartRouteSwapActions }
