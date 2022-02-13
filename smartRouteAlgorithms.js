@@ -689,6 +689,10 @@ function getRoutesAndAllocationsForMiddleToken(
   )
   let secondHopRoutes = froutes.map((item) => [item[1]])
   let secondHopNodeRoutes = fnoderoutes.map((item) => [item[1], item[2]])
+  middleAllocations = checkIntegerSumOfAllocations(
+    middleAllocations,
+    middleTokenTotal,
+  )
   return {
     routes: secondHopRoutes,
     nodeRoutes: secondHopNodeRoutes,
