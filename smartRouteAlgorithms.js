@@ -759,8 +759,6 @@ function getActionListFromRoutesAndAllocationsORIG(
   allocations,
   slippageTolerance,
 ) {
-  // TODO: need to consolidate sub-parallel swap paths - need middle token checks.
-  //console.log(allocations.map((item) => item.toString()))
   let actions = []
   for (var i in routes) {
     let route = routes[i]
@@ -1044,7 +1042,7 @@ function bigMax(arrayOfBigs) {
 function cullPoolsWithInsufficientLiquidity(pools, threshold = 0.001) {
   var thresh = new Big(threshold)
   let normLiq = getNormalizedLiquiditiesFromList(pools)
-  filteredPools = []
+  let filteredPools = []
   for (var i = 0; i < normLiq.length; i++) {
     if (normLiq[i] > thresh) {
       filteredPools.push(pools[i])
@@ -1265,7 +1263,7 @@ function arrayContains(arr, obj) {
   // checks to see if the input array contains a reference object, obj, using
   // JSON.stringify() .
   let obj_json = JSON.stringify(obj)
-  for (itemInd in arr) {
+  for (var itemInd in arr) {
     if (JSON.stringify(arr[itemInd]) == obj_json) {
       return true
     }
@@ -1505,7 +1503,7 @@ function stableSmart(inputToken, outputToken, totalInput, slippageTolerance) {
       let middleTokenAmount = firstAction.min_amount_out
       //scale to get minimum_amount_out
       let minMiddleTokenAmount = new Big(middleTokenAmount)
-        .times(new Big(1).minus(slippageTolerance))
+        .times(new Big(1).minus(new Big(slippageTolerance).div(100)))
         .round()
         .toString()
 
