@@ -604,17 +604,6 @@ test('Checking double-parallel hop followed by double-Parallel Hop', async () =>
       update_time: 1643427419,
       token0_price: '0',
     },
-    {
-      id: 7,
-      token1Id: 'token1.near',
-      token2Id: 'token2.near',
-      token1Supply: '100000000000000',
-      token2Supply: '100000000000000',
-      fee: 30,
-      shares: '10000000000000000000000000',
-      update_time: 1643427419,
-      token0_price: '0',
-    },
   ]
   let inputToken = 'token1.near'
   let outputToken = 'token2.near'
@@ -632,22 +621,15 @@ test('Checking double-parallel hop followed by double-Parallel Hop', async () =>
       pool_id: 3,
       token_in: 'token1.near',
       token_out: 'wrap.near',
-      amount_in: '339717658922',
+      amount_in: '500000000000',
       min_amount_out: '497999017475',
     },
     {
       pool_id: 4,
       token_in: 'token1.near',
       token_out: 'wrap.near',
-      amount_in: '339717658922',
+      amount_in: '500000000000',
       min_amount_out: '497999017475',
-    },
-    {
-      pool_id: 7,
-      token_in: 'token1.near',
-      token_out: 'token2.near',
-      amount_in: '320564682156',
-      min_amount_out: '318266196846',
     },
     {
       pool_id: 5,
@@ -667,7 +649,7 @@ test('Checking double-parallel hop followed by double-Parallel Hop', async () =>
   expect(JSON.stringify(result)).toBe(JSON.stringify(expected))
 })
 
-test('Checking double-parallel hop followed by double-Parallel Hop, with a direct hop as well', async () => {
+test('Checking double-parallel hop followed by double-Parallel Hop, with direct hop as well', async () => {
   let pools = [
     {
       id: 3,
@@ -713,6 +695,17 @@ test('Checking double-parallel hop followed by double-Parallel Hop, with a direc
       update_time: 1643427419,
       token0_price: '0',
     },
+    {
+      id: 7,
+      token1Id: 'token1.near',
+      token2Id: 'token2.near',
+      token1Supply: '100000000000000',
+      token2Supply: '100000000000000',
+      fee: 30,
+      shares: '10000000000000000000000000',
+      update_time: 1643427419,
+      token0_price: '0',
+    },
   ]
   let inputToken = 'token1.near'
   let outputToken = 'token2.near'
@@ -730,29 +723,36 @@ test('Checking double-parallel hop followed by double-Parallel Hop, with a direc
       pool_id: 3,
       token_in: 'token1.near',
       token_out: 'wrap.near',
-      amount_in: '500000000000',
-      min_amount_out: '497999017475',
+      amount_in: '339717658922',
+      min_amount_out: '338358661424',
     },
     {
       pool_id: 4,
       token_in: 'token1.near',
       token_out: 'wrap.near',
-      amount_in: '500000000000',
-      min_amount_out: '497999017475',
+      amount_in: '339717658922',
+      min_amount_out: '338358661424',
+    },
+    {
+      pool_id: 7,
+      token_in: 'token1.near',
+      token_out: 'token2.near',
+      amount_in: '320564682156',
+      min_amount_out: '318266196846',
     },
     {
       pool_id: 5,
       token_in: 'wrap.near',
       token_out: 'token2.near',
-      amount_in: '497999017474',
-      min_amount_out: '493557975275',
+      amount_in: '338358661424',
+      min_amount_out: '335873195175',
     },
     {
       pool_id: 6,
       token_in: 'wrap.near',
       token_out: 'token2.near',
-      amount_in: '497999017476',
-      min_amount_out: '493557975277',
+      amount_in: '338358661424',
+      min_amount_out: '335873195175',
     },
   ]
   expect(JSON.stringify(result)).toBe(JSON.stringify(expected))
